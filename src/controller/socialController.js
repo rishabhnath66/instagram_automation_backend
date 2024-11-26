@@ -13,8 +13,6 @@ socialController.addAccount=async (req, res) => {
         let response;
          response = await instragramAccAdd(reqobj.code, reqobj.redirect_uri)
         if (response?.status) {
-
-        
             let id = response.data.id;
 
             let useraccount = await selectData({
@@ -45,11 +43,6 @@ socialController.addAccount=async (req, res) => {
                 res.json({ status: true, message: "Account Updated Succesfully." });
             }
             else {
-              console.log({
-                userId,
-                accountId: id,
-                data: response.data
-            },"ppppppppppppppppppppppppp")
                 let updateAcc = await insertData({
                     collection: socialAccountModel,
                     data: {
@@ -74,8 +67,6 @@ socialController.addAccount=async (req, res) => {
     }
 
   }
-
-
 
 
 

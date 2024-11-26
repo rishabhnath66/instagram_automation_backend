@@ -14,9 +14,7 @@ module.exports = mongoose.model('schedule_post_test', new mongoose.Schema({
     postDate : { type: Date},
     errorData : { type: Object},
     successData : { type: Object},
-    isTrash :{type: Date},
     supportSocialAccount : {type : Array},
-    accountsSettings :  { type: Object},
     createdAt : {type: Date, default: Date.now},
     updatedAt : {type: Date, default: Date.now} 
 }));

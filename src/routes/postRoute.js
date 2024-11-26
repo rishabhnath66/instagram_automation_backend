@@ -1,21 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const socialController= require("../controller/socialController");
+const postController= require("../controller/postController");
 const middlewareModule = require('../middleware/middleware');
 
 let requests ={
   get : {
-  
+    
   },
   post : {
+   "/createPost" : postController.createPost,
+   "/updatePost" : postController.updatePost,
+   "/multiCreatePost" : postController.multiCreatePost,
+  },
+   delete : {
 
    },
-   delete : {
    
-   }
 }
 let allowrequest ={
-
 }
 
 let list = Object.keys(allowrequest)

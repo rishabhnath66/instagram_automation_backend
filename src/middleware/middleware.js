@@ -1,6 +1,6 @@
 const { sendResponse } =require("../helper/comman");
 const jwt = require("jsonwebtoken");
-const {selectData } = require("../services/dbservice");
+const {selectData } = require("../services/dbService");
 const usersModel = require("../model/usersModel");
 
 const middlewareModule = {};
@@ -41,9 +41,6 @@ middlewareModule.checkAuth = async(req, res, next) => {
     })
   }
 }
-
-
-
 
 middlewareModule.allowuser  = async(role,req, res, next) => {
 let user=  req.user

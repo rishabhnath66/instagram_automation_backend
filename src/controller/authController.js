@@ -147,15 +147,11 @@ let manageLoginToken = ({req, res, email, password, rememberMe=false, checkUser}
                 name: checkUser.name,
                 profilePic: checkUser.profilePic,
             },
-            isCamp, 
             status: true,
             message: "You are successfully logged in.",
         };
-
-            res.status(200).json(authData);  
-        
-
-        
+        sendResponse(res,200, "You are successfully logged in.",authData);
+           
     });
 }
 

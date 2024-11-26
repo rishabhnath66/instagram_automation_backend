@@ -9,8 +9,9 @@ let dbService = {
         return result;
     },
     insertData : (p) => {
+        try{
         return new Promise(function(resolveAction, rejectAction) {
-            let {req, res, collection , data} = p;
+            let {collection , data} = p;
             if(typeof data == 'object'){
                 var createObj = collection.create(data)
             }else{
@@ -23,11 +24,13 @@ let dbService = {
                 rejectAction(error)
             })    
         });
-        
+    }catch(e){
+        rejectAction(e)
+    }
     },
     updateData : (p) => {
         return new Promise(function(resolveAction, rejectAction) {
-            let {req, res, collection , data , where , limit} = p;
+            let {collection , data , where , limit} = p;
             if(limit){
                 var createObj = collection.updateOne(where ,data);
             }else{
@@ -48,7 +51,7 @@ let dbService = {
     },
     selectData : (p) => {
         return new Promise(function(resolveAction, rejectAction) {
-            let {req, res, collection , where , limit , keys , skip , sort ,page , populateAry, findOne = false} = p;
+            let { collection , where , limit , keys , skip , sort ,page , populateAry, findOne = false} = p;
             keys = keys ? dbService.manageKeys(keys):{},
             limit = limit || 10, 
             page = page || 1;
@@ -124,7 +127,7 @@ let dbService = {
     },
     deleteData : (p) => {
         return new Promise(function(resolveAction, rejectAction) {
-            let {req, res, collection , where ,limit} = p;
+            let { collection , where ,limit} = p;
             if(limit == 1){
                 var createObj = collection.deleteOne(where);
             }else{
@@ -141,7 +144,7 @@ let dbService = {
     },
     countData : (p) => {
         return new Promise(function(resolveAction, rejectAction) {
-            let {req, res, collection , where} = p;
+            let { collection , where} = p;
             var createObj = collection.countDocuments(where);
 
             
@@ -155,7 +158,7 @@ let dbService = {
     },
     aggregateData : (p) => {
         return new Promise(function(resolveAction, rejectAction) {
-            let {req, res, collection , aggregateCnd} = p;
+            let { collection , aggregateCnd} = p;
             var createObj = collection.aggregate(aggregateCnd);
 
             createObj.then(result => {
@@ -167,7 +170,7 @@ let dbService = {
     },
     findOneAndUpdate : (p) => {
         return new Promise(function(resolveAction, rejectAction) {
-            let {req, res, collection , where , data} = p;
+            let { collection , where , data} = p;
             collection.findOneAndUpdate(where, data).then((result) => {
                 resolveAction(result);
             }).catch(error => {
