@@ -1,7 +1,11 @@
 const {insertData, selectData, updateData ,deleteData} = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const userModel = require("../model/usersModel")
+const multer = require('multer')
+const upload = multer().single('avatar')
+
 const userController = {}
+
   userController.addUser=async (req, res) => {
       try {
         let {name, email, password,conectedAccount } =  req?.body || {};  
@@ -218,4 +222,6 @@ const userController = {}
       sendResponse(res,500, "Something went wrong.");
     }
   }
+
+
   module.exports = userController

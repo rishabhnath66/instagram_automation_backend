@@ -1,8 +1,12 @@
 const {insertData, selectData, updateData } = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const userModel = require("../model/usersModel")
+const assetsModel = require("../model/assetsModel")
 const authController = {}
-
+const multer = require('multer');
+const  AWSHelper = require("../services/awsservice");
+const upload = multer().any()
+const path = require('path'); 
 authController.login=async (req, res) => {
     try {
       let {email, password } = req.body
@@ -155,6 +159,42 @@ let manageLoginToken = ({req, res, email, password, rememberMe=false, checkUser}
     });
 }
 
+authController.uploadMedia=async(req,res)=>{
+  try{
+    upload(req, res, async (err)=> {
+      if (err instanceof multer.MulterError) {
+        sendResponse(res,500, "Something went wrong.",err);
+      } else if (err) {
+        sendResponse(res,500, "Something went wrong.",err);
+      }else{
+     let data={}
+        if(req.files){
+          data.title=req.body.title
+          data.mediaType=req.body.mediaType
+          for(let file of req.files){
+            console.log(AWSHelper.uploadS3,"AWSHelper.uploadS3")
+            let ext = path.extname(file.originalname)
+            let name= "File_"+Date.now()+ext
+           let remotepath="instragram/user/"+name
+           let f1=await AWSHelper.uploadS3(file , remotepath,{})
+            data.files={
+              ...data?.files,
+              [file.fieldname]:f1.Key
+            }
+          }
+          let d2=await insertData({
+            collection : assetsModel,
+            data,
+          })
+          if(d2){
+            sendResponse(res,201, "file upload successfully.")
+          }
+        }
+      }
+    })
+  }catch(e){
 
+  }
+}
 
   module.exports = authController

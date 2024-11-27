@@ -10,6 +10,7 @@ let requests ={
   },
   post : {
     '/addUser': userController.addUser,
+   
    },
    delete : {
     '/deleteUser': userController.deleteUser,

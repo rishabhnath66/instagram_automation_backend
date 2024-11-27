@@ -12,7 +12,7 @@ let dbService = {
         try{
         return new Promise(function(resolveAction, rejectAction) {
             let {collection , data} = p;
-            if(typeof data == 'object'){
+            if(!Array.isArray(data)){
                 var createObj = collection.create(data)
             }else{
                 var createObj = collection.insertMany(data)
@@ -55,14 +55,11 @@ let dbService = {
             keys = keys ? dbService.manageKeys(keys):{},
             limit = limit || 10, 
             page = page || 1;
-             
-            
             if(findOne){
                 var createObj = collection.findOne(where , keys)
             }else{
                 var createObj = collection.find(where, keys)
             }
-
             if(populateAry){
 
                 if('multiple' in populateAry){

@@ -7,6 +7,7 @@ module.exports = mongoose.model('schedule_post_test', new mongoose.Schema({
     caption : { type: String},
     mediaUrl : { type: Object, default : undefined},
     scheduleDate : { type: Date},
+    postId : {type : String ,default : undefined},
     status : {type : String ,default : "initialize"},
     accounts : {type : Object},
     postOn : {type : Array},

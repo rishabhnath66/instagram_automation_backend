@@ -1,13 +1,15 @@
 const schedulePostModel = require('../model/schedulePostModel');
 const socialAccountModel = require('../model/socialAccountModel');
+const postModel= require('../model/postModel');
 const { objectToQuery } = require('../helper/comman');
-const { selectData, updateData} =require('./dbService');
+const { selectData, updateData, insertData} =require('./dbservice');
 
 let funObj = {
     initSchedule : () => {
         funObj.getSheduleList();
     },
     getSheduleList : () => {
+        console.log(Intl.DateTimeFormat().resolvedOptions().timeZone)
         let from = new Date(Date.now() - 1000 * 60 * 10), //10 minutes
         to = new Date(),
         checkPostCond = {
@@ -20,7 +22,6 @@ let funObj = {
         selectData({
             collection: schedulePostModel,
             where: {...checkPostCond},
-            limit : 1,
         }).then(postList => {
             console.log({postList})
             if(postList.length){
@@ -36,7 +37,7 @@ let funObj = {
             }
         });
     },
-    manageError : ({target, error, type = 'err' , isFinished = false}) => {
+    manageError : ({target, error, type = 'err' , isFinished = false,id=null}) => {
         selectData({
             collection: schedulePostModel,
             where: { _id : target},
@@ -69,6 +70,15 @@ let funObj = {
                     data : updData,
                     limit : 1
                 });
+
+                if(id){
+                    updateData({
+                        collection: socialAccountModel,
+                        where: { _id : id},
+                        data : {status : false},
+                        limit : 1
+                    });
+                }
             }
         });
 
@@ -97,11 +107,19 @@ let funObj = {
                     };
                 }
                 
-                console.log('manageSuccess', {type, target, isFinished});
                 let updData = {successData};
                 if(isFinished){
                     updData.status = "completed"
                 }
+                insertData({
+                    collection : postModel,
+                    data : {
+                        accountId : data.accountId,
+                        scheduleId : target,
+                        userId : data.userId,
+                        postId : data.id,
+                    }
+                })
                 updateData({
                     collection: schedulePostModel,
                     where: { _id : target},
@@ -167,7 +185,6 @@ let funObj = {
                         }
                     }
                 }).then(async accountList => {
-                    console.log("ababa",accountList)
                     if(accountList.length){
                         let isDownload = false
                         console.log({isDownload},mediaUrl)
@@ -184,8 +201,11 @@ let funObj = {
                             console.log({accountList})
                             for(let accountData of accountList){
                                 manageResp.isFinished = checkAccountCnt == accountList.length;
-                                let {  accountId, data } = accountData,
+                                let {  accountId, data,userId ,_id} = accountData,
                                 { access_token, refreshToken } = data,
+                                //
+                               
+                                //
                                 details = {
                                     mediaList,
                                     caption,
@@ -193,15 +213,18 @@ let funObj = {
                                     accessToken:access_token,
                                     thumb : mediaUrl?.[0]?.thumb
                                 };
+                                //
+                                manageResp.id=_id 
+                                //
                                 console.log({mediaUrl});
 
     
                                     funObj.instagramAction.manageInstaPost(details).then(resp => {
-                                        let {id,} = resp;
+                                        let {id} = resp;
 
                                         funObj.manageSuccess({
                                             ...manageResp, 
-                                            data : {id},
+                                            data : {id,accountId,userId},
                                             type : 'instagram'
                                         });
 
@@ -287,9 +310,9 @@ let funObj = {
                         }).then(result => {
                             console.log({result},"ooooooo")
                             if(result.id){
-                                funObj.instagramAction.instaVideoPublished(accountId, result.id,  accessToken).then(r => {
+                                funObj.instagramAction.instaVideoPublished(accountId, result.id,  accessToken).then(result1 => {
                                             funObj.instagramAction.checkStatus(result.id, accessToken).then(async (status) => {
-                                                    resolve(result);
+                                                    resolve(result1);
                                             });
                                         })
                     

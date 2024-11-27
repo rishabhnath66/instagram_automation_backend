@@ -11,6 +11,7 @@ get : {
 },
 post :{
   '/register': authController.register,
+  '/uploadMedia': authController.uploadMedia,
  
 },
 delete : {

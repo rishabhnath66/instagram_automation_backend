@@ -1,17 +1,11 @@
-const { Upload } = require("@aws-sdk/lib-storage");
-const {
-  S3Client,
-  CopyObjectCommand,
-  DeleteObjectCommand,
-  PutObjectCommand,
-} =require("@aws-sdk/client-s3");
+const { S3Client, CopyObjectCommand, DeleteObjectCommand} =require("@aws-sdk/client-s3");
 const fs = require('node:fs/promises');
-
+const { Upload } = require("@aws-sdk/lib-storage");
 const config = {
-  region: process.env.AWS_REGION,
+  region: process.env.region,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY,
-    secretAccessKey: process.env.AWS_SECRET_KEY,
+    accessKeyId: process.env.accessKeyId,
+    secretAccessKey: process.env.secretAccessKey,
   },
 };
 const client = new S3Client(config);
@@ -20,10 +14,14 @@ const AWSHelper = {};
 
 let defaultOptions = {
   ACL: "public-read",
-  Bucket: process.env.AWS_BUCKET_NAME
+  Bucket: process.env.bucketName
 };
 
-AWSHelper.uploadS3 = (localFile, remotePath, options = {}) => {
+AWSHelper.multiuploadS3=async()=>{
+
+}
+
+AWSHelper.uploadS3 = (file, remotePath, options = {}) => {
   return new Promise(async(resolve, reject) => {
     let uploadParams = {
       ...defaultOptions,
@@ -31,8 +29,7 @@ AWSHelper.uploadS3 = (localFile, remotePath, options = {}) => {
     };
 
     uploadParams.Key = remotePath;
-    let fdata=await fs.readFile(localFile);
-    uploadParams.Body = fdata
+    uploadParams.Body = file.buffer
 
  
         const parallelUploads3 = new Upload({
@@ -45,8 +42,6 @@ AWSHelper.uploadS3 = (localFile, remotePath, options = {}) => {
         });
 
         const data = await parallelUploads3.done();
-
-         fs.unlink(localFile);
         if(data?.ETag) {
           // ETag Key Location
           let { ETag, Key, Location } = data;
@@ -107,4 +102,4 @@ AWSHelper.deleteObjects = (remotePaths = []) => {
 
 
 
-export default AWSHelper;
+module.exports=AWSHelper
