@@ -6,12 +6,13 @@ let requests = {};
 
 requests={
 get : {
-  '/login': authController.login,
+  
   '/addSocialAccount': socialController.addAccount,
 },
 post :{
   '/register': authController.register,
   '/uploadMedia': authController.uploadMedia,
+  '/login': authController.login,
  
 },
 delete : {

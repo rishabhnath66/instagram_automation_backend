@@ -4,7 +4,7 @@ module.exports = mongoose.model('social_accounts', new mongoose.Schema({
     userId: { type: mongoose.Types.ObjectId, ref: "users" },
     accountId: {type: String},
     data : {type : Object},
-    status : {type: Boolean},
+    status : {type: Boolean,default : true},
     reconnectErr : {type : String},
     expaireIn : {type : Date},
     createdAt :{type: Date, default: Date.now},

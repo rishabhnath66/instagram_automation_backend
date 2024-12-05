@@ -106,22 +106,8 @@ authController.register=async (req, res) => {
   }
 
 
-  authController.authLink=async (req, res) => {
-    try {
-        const redirectUri = encodeURIComponent("https://app.pixalab.ai/dashboard");
-        const clientId = "3874145586148497";
-        const authUrl = `https://www.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${redirectUri}?state=instragram&response_type=code&scope=business_basic%2Cbusiness_manage_messages%2Cbusiness_manage_comments%2Cbusiness_content_publish&state=instragram`;
-        sendResponse(res, 200, "", {
-          url: authUrl,
-        });
-    } catch (e) {
-      sendResponse(res,500, "Something went wrong.");
-    }
-  }
-
-let manageLoginToken = ({req, res, email, password, rememberMe=false, checkUser}) => {
+let manageLoginToken = ({ res, email, password, rememberMe=false, checkUser}) => {
     updateData({
-        req, res,
         collection: userModel,
         limit: 1,
         where: { email },
@@ -143,17 +129,13 @@ let manageLoginToken = ({req, res, email, password, rememberMe=false, checkUser}
         }
 
         let authData = {
-            data: {
-                token: token,
-                userId: checkUser._id,
-                role: checkUser.role,
-                email,
-                name: checkUser.name,
-                profilePic: checkUser.profilePic,
-            },
-            status: true,
-            message: "You are successfully logged in.",
-        };
+          token: token,
+          userId: checkUser._id,
+          role: checkUser.role,
+          email,
+          name: checkUser.name,
+          profilePic: checkUser.profilePic,
+      };
         sendResponse(res,200, "You are successfully logged in.",authData);
            
     });

@@ -1,4 +1,4 @@
-const {insertData, selectData, updateData ,deleteData} = require("../services/dbservice");
+const {insertData, selectData, updateData ,deleteData, countData} = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const userModel = require("../model/usersModel")
 const multer = require('multer')
@@ -21,7 +21,7 @@ const userController = {}
               type : "string"
           },
           conectedAccount : {
-              type : "object"
+              type : "array"
           }
         })
 
@@ -47,7 +47,7 @@ const userController = {}
                               email,
                               password : await encrypt(password),
                               status : 1,
-                              conectedAccount ,
+                              accounts :conectedAccount ,
                               parentId : user._id,
                               role : user.role=="admin" ? "subadmin" : "user"
                           } 
@@ -63,14 +63,14 @@ const userController = {}
 
   userController.getUserList=async (req, res) => {
     try {
-      let {page , limit} =  req?.body || {};  
+      let {page , limit,keys} =  req?.query || {};  
       let user=req.user
-      let valid=validateData( req?.body ?? {}, {
+      let valid=validateData( req?.query ?? {}, {
         page : {
-          type : "number"
+          type : "string"
         },
         limit : {
-          type : "number"
+          type : "string"
         },
       })
 
@@ -79,14 +79,28 @@ const userController = {}
         return
       }
       
+      let where={parentId :user._id }
+      if(keys)
+      {
+        where.name= { $regex: keys, $options: "i" } 
+      }
+      console.log({where})
        let result=await selectData({
-            req, res,
             collection: userModel,
-            where: {parentId :user._id },
+            where,
             limit : limit, 
             page : page,
         })
-        sendResponse(res,200,"",result)
+        let count=await countData({
+        collection: userModel,
+          where,
+      })
+      console.log({result},{count})
+      let data ={
+        data : result,
+        count : count
+      }
+        sendResponse(res,200,"",data)
     } catch (e) {
       sendResponse(res,500, "Something went wrong.");
     }
@@ -104,11 +118,8 @@ const userController = {}
         email : {
           type : "string"
         },
-        password : {
-            type : "string"
-        },
         conectedAccount : {
-            type : "object"
+            type : "array"
         },
         target : {
           type : "string"
@@ -131,11 +142,12 @@ const userController = {}
               let data={
                     name,
                     status : 1,
-                    conectedAccount ,
+                    accounts:conectedAccount ,
                }
                if(password) {
                 data.password= await encrypt(password)
                }
+               console.log({data})
                 await updateData({
                         req, res,
                         collection: userModel,
@@ -161,23 +173,24 @@ const userController = {}
           type : "string"
         }
       })
-
+      console.log({target})
       if(Object.keys(valid).length!=0){
         sendResponse(res,400,valid)
         return
       }
        let result=await deleteData({
-            req, res,
             collection: userModel,
             limit: 1,
             where: { _id : target ,parentId : user._id,},
         })
-            if (!result) {
-                sendResponse(res,204,"User not exits.")
+        console.log({result},result.deletedCount,"pppp")
+            if (result?.deletedCount==0) {
+                sendResponse(res,400,"User not exits.")
             } else {
                 sendResponse(res,200,"User Deleted Succesfully.")    
             }
     } catch (e) {
+      console.log({e})
       sendResponse(res,500, "Something went wrong.");
     }
   }
@@ -207,12 +220,7 @@ const userController = {}
             } else {
               var token = await manageJwtToken(checkUser);
               let data ={
-                token, 
-                userId: checkUser._id,
-                role: checkUser.role,
-                email : checkUser.role,
-                name: checkUser.name,
-                profilePic: checkUser.profilePic,
+                token
               }
                sendResponse(res,200,"",data)
                     
@@ -222,6 +230,76 @@ const userController = {}
       sendResponse(res,500, "Something went wrong.");
     }
   }
+  userController.changeStatus=async (req, res) => {
+    try {
+      let {status,target} =  req?.body || {};  
+      let user=req.user
+      let valid=validateData( req?.body ?? {}, {
+        status : {
+          type : "boolean"
+        },
+        target : {
+          type : "string"
+        },
+       
+      })
 
+      if(Object.keys(valid).length!=0){
+        sendResponse(res,400,valid)
+        return
+      }
+       let result=await selectData({
+            req, res,
+            collection: userModel,
+            findOne: true,
+            where: { _id : target ,parentId : user._id,},
+        })
+            if (!result) {
+                sendResponse(res,409,"User not exits.")
+            } else {
+              let data={
+                    status ,
+               }
+                await updateData({
+                        req, res,
+                        collection: userModel,
+                        where : { _id : target },
+                        data ,
+                        limit : 1
+                    })
+                    sendResponse(res,200,"User Status updated.")
+                    
+            }
+    } catch (e) {
+      sendResponse(res,500, "Something went wrong.");
+    }
+  }
 
+  userController.getDatabyToken=async (req,res)=>{
+    try {
+      let user=req.user
+       let checkUser=await selectData({
+            req, res,
+            collection: userModel,
+            findOne: true,
+            where: { _id : user._id,},
+        })
+            if (!checkUser) {
+                sendResponse(res,409,"User not exits.")
+            } else {
+              let authData = {
+                userId: checkUser._id,
+                role: checkUser.role,
+                email : checkUser.email,
+                name: checkUser.name,
+                profilePic: checkUser.profilePic,
+            };
+               sendResponse(res,200,"",authData)
+                    
+            }
+    } catch (e) {
+      console.log({e})
+      sendResponse(res,500, "Something went wrong.",e);
+    }
+  }
   module.exports = userController

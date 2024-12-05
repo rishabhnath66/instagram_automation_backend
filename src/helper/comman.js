@@ -86,7 +86,7 @@ module.exports = {
       const fieldValue = input?.[field];
       let type = validateFields?.[field]?.type;
       
-      if (!fieldValue) {
+      if (!input.hasOwnProperty(field)) {
         message[field] = field + ` is Require.`;
       } else if (typeof fieldValue != type && type != "array") {
         message[field] = field + ` type Should be ${type}.`;
@@ -107,8 +107,10 @@ module.exports = {
     return message;
   },
   sendResponse: (res, code, msg = null, data = undefined) => {
+    console.log({code})
     const messagelist = {
       200: "",
+      204: "Resource Not Found",
       400: "Bad Request",
       401: "Unauthorized",
       403: "Forbidden",

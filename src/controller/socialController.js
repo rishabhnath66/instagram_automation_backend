@@ -1,5 +1,5 @@
 const axios=require("axios")
-const {insertData, selectData, updateData } = require("../services/dbservice");
+const {insertData, selectData, updateData, countData, deleteData } = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const socialAccountModel = require("../model/socialAccountModel")
 const socialController = {}
@@ -8,57 +8,64 @@ const socialController = {}
 
 socialController.addAccount=async (req, res) => {
     try {
-        let userId=req.query.state
+        let userdata=req.query.state
+        userdata=JSON.parse(userdata)
+        console.log({userdata})
         let reqobj = req.query;
         let response;
          response = await instragramAccAdd(reqobj.code, reqobj.redirect_uri)
         if (response?.status) {
             let id = response.data.id;
-
+            let where = {
+              userId: userdata.id,
+              accountId: id,
+            };
+            if(userdata.target)
+            {
+              where._id=userdata.target
+            }
             let useraccount = await selectData({
+              collection: socialAccountModel,
+              findOne: true,
+              where,
+              req, res
+          });
+
+           if(userdata.target){
+             if(useraccount)
+             {
+              let updateAcc = await updateData({
                 collection: socialAccountModel,
-                findOne: true,
-                where: {
-                    userId,
-                    accountId: id,
+                limit: 1,
+                where,
+                data: {
+                    $set: { data: response.data , status: true  }
                 },
-                req, res
+                req, res,
             });
-
-            if (useraccount) {
-                let updateAcc = await updateData({
-                    collection: socialAccountModel,
-                    limit: 1,
-                    where: {
-                            userId,
-                            accountId: id,
-                                         
-                    },
-                    data: {
-                        $set: { data: response.data , status: true  }
-                    },
-                    req, res,
-                });
-
-                res.json({ status: true, message: "Account Updated Succesfully." });
-            }
-            else {
+            res.json({ status: true, message: "Account Updated Succesfully." });
+             }else{
+              res.json({ status: true, message: "Please select proper account." });
+             }
+           }else{
+            if(!useraccount)
+              {
                 let updateAcc = await insertData({
-                    collection: socialAccountModel,
-                    data: {
-                        userId,
-                        accountId: id,
-                        data: response.data
-                    },
-                    req, res,
-                });
+                  collection: socialAccountModel,
+                  data: {
+                      userId :userdata.id,
+                      accountId: id,
+                      data: response.data
+                  },
+                  req, res,
+              });
 
-                sendResponse(res,200, "Account successfully connected.");
-            }
-        }else {
-          // sendResponse(res,201,"account successfully connected.")
-
-        }
+              sendResponse(res,200, "Account successfully connected.");
+              }else{
+                res.json({ status: true, message: "Account already exits" });
+              }
+           } 
+          }
 
     } catch (error) {
       console.log({error})
@@ -68,7 +75,136 @@ socialController.addAccount=async (req, res) => {
 
   }
 
+socialController.deleteAccount=async (req, res) => {
+    try {
+      let {target} =  req?.body || {};  
+      let user=req.user
+      let valid=validateData( req?.body ?? {}, {
+        target : {
+          type : "string"
+        }
+      })
+      console.log({target})
+      if(Object.keys(valid).length!=0){
+        sendResponse(res,400,valid)
+        return
+      }
+      let where={ _id : target }
+      if(user.role=='user')
+        {
+          where.userId=user._id
+        }
+       let result=await deleteData({
+            collection: socialAccountModel,
+            limit: 1,
+            where,
+        })
+            if (result?.deletedCount==0) {
+                sendResponse(res,400,"Account not exits.")
+            } else {
+                sendResponse(res,200,"Account Deleted Succesfully.")    
+            }
+    } catch (e) {
+      console.log({e})
+      sendResponse(res,500, "Something went wrong.");
+    }
+  }
+socialController.getInstragramAccountList=async (req, res) => {
+    try {
+      let {page , limit,keys} =  req?.query || {};  
+      let user=req.user
+      let valid=validateData( req?.query ?? {}, {
+        page : {
+          type : "string"
+        },
+        limit : {
+          type : "string"
+        },
+      })
 
+      if(Object.keys(valid).length!=0){
+        sendResponse(res,400,valid)
+        return
+      }
+      let where={userId :user._id}
+      // if(user.role=="user" ){
+      //   where={userId :user._id}
+      // }
+      
+      if(keys)
+      {
+        where["data.username"]= { $regex: keys, $options: "i" } 
+      }
+      console.log({where})
+       let result=await selectData({
+            collection: socialAccountModel,
+            where,
+            limit : limit, 
+            page : page,
+        })
+        let count=await countData({
+        collection: socialAccountModel,
+          where,
+      })
+      let data ={
+        data : result,
+        count : count
+      }
+        sendResponse(res,200,"",data)
+    } catch (e) {
+      console.log(e)
+      sendResponse(res,500, "Something went wrong.",e);
+    }
+  }
+
+
+  socialController.getUserConnectedInstragramAccounts=async (req, res) => {
+    try {
+      let {ids} =  req?.body || {};  
+      let user=req.user
+      let valid=validateData( req?.body ?? {}, {
+        ids : {
+          type : "array"
+        },
+      })
+
+      if(Object.keys(valid).length!=0){
+        sendResponse(res,400,valid)
+        return
+      }
+    console.log({ids})
+       let result=await selectData({
+            collection: socialAccountModel,
+            where : { _id : {$in : ids}},
+           
+        })
+        let count=await countData({
+        collection: socialAccountModel,
+        where :  { _id : {$in : ids}},
+      })
+      let data ={
+        data : result,
+        count : count
+      }
+        sendResponse(res,200,"",data)
+    } catch (e) {
+      console.log(e)
+      sendResponse(res,500, "Something went wrong.",e);
+    }
+  }
+socialController.authLink=async (req, res) => {
+    try {
+      let user=req.user
+        const redirectUri = `https://localhost:3001/auth/addSocialAccount`
+        const clientId = "3874145586148497";
+        const authUrl = `https://www.instagram.com/oauth/authorize?enable_fb_login=0&force_authentication=1&client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments%2Cinstagram_business_content_publish&state=${user._id}`;
+        sendResponse(res, 200, "", {
+          url: authUrl,
+        });
+    } catch (e) {
+      sendResponse(res,500, "Something went wrong.");
+    }
+  }
 
   const instragramAccAdd= async (code, redirect_uri) => {
     return new Promise(async(resolve,reject)=>{

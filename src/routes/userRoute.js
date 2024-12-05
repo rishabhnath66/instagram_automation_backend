@@ -2,24 +2,32 @@ const express = require('express');
 const router = express.Router();
 const userController= require("../controller/userController");
 const middlewareModule = require('../middleware/middleware');
+const socialController = require('../controller/socialController');
 
 let requests ={
   get : {
     '/getUserList': userController.getUserList,
     '/getUserLogin': userController.getUserLogin,
+    '/instragramlogin' : socialController.authLink,
+    '/getinstragramAccountlist' : socialController.getInstragramAccountList,
+    '/getDatabyToken':userController.getDatabyToken
   },
   post : {
     '/addUser': userController.addUser,
-   
+    '/updateUser': userController.updateUser,
+    '/changeStatus': userController.changeStatus,
+    '/getUserConnectedInstragramAccounts' : socialController.getUserConnectedInstragramAccounts
    },
    delete : {
     '/deleteUser': userController.deleteUser,
+    '/deleteAccount': socialController.deleteAccount,
    }
 }
 let allowrequest ={
   '/getUserList' : ["admin","subadmin"],
   '/addUser' : ["admin","subadmin"],
   '/deleteUser' : ["admin","subadmin"],
+  '/changeStatus' :  ["admin","subadmin"],
 }
 
 let list = Object.keys(allowrequest)
