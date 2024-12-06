@@ -15,7 +15,7 @@ app.use(express.json({limit : '5mb'}));
 app.use(express.urlencoded({ extended: false }));
 app.use("/auth",indexRoute)
 app.use("/user",middleware.checkAuth,userRoute)
-app.use("/post",postRoute)
+app.use("/post",middleware.checkAuth,postRoute)
 app.listen(process.env.PORT,()=>{
     console.log("start server")
 })

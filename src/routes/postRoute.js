@@ -5,7 +5,8 @@ const middlewareModule = require('../middleware/middleware');
 
 let requests ={
   get : {
-    
+    "/getPost" : postController.getPost,
+    "/multipost" : postController.multipost,
   },
   post : {
    "/createPost" : postController.createPost,

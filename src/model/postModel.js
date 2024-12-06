@@ -13,4 +13,6 @@ module.exports = mongoose.model('post', new mongoose.Schema({
     error :  {type : Object ,default : undefined},
     type :   {type : String ,default : undefined},
     createdAt : {type: Date, default: Date.now},
+    scheduleDate : {type: Date, default: Date.now},
+    postDate : {type: Date, default: Date.now},
 }));

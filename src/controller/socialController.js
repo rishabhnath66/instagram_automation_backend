@@ -127,9 +127,9 @@ socialController.getInstragramAccountList=async (req, res) => {
         return
       }
       let where={userId :user._id}
-      // if(user.role=="user" ){
-      //   where={userId :user._id}
-      // }
+      if(user.role=="user" ){
+        where={userId :user.parentId}
+      }
       
       if(keys)
       {

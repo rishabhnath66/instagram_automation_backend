@@ -1,13 +1,117 @@
 const axios=require("axios")
-const {insertData, selectData, updateData } = require("../services/dbservice");
+const {insertData, selectData, updateData, countData, aggregateData } = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const schedulePostModel = require("../model/schedulePostModel");
 const { where } = require("../model/socialAccountModel");
 const postModel = require("../model/postModel");
 const scheduleController = {}
+const mongoose = require('mongoose');
 
 
+scheduleController.getPost=async (req, res) => {
+    try {
+        let {page , limit,keys} =  req?.query || {};  
+        let user=req.user
+        let valid=validateData( req?.query ?? {}, {
+          page : {
+            type : "string"
+          },
+          limit : {
+            type : "string"
+          },
+        })
+  
+        if(Object.keys(valid).length!=0){
+          sendResponse(res,400,valid)
+          return
+        }
+        let where={userId :user._id }
+        if(keys)
+        {
+          where.name= { $regex: keys, $options: "i" } 
+        }
+        // console.log({where})
+         let result=await aggregateData({
+              collection: schedulePostModel,
+              aggregateCnd : [
+                {$match : {userId :user._id }},
+                {
+                  
+                    $lookup: {
+                           from: "social_accounts",
+                           localField: "accounts",
+                           foreignField: "_id",
+                           as: "data"
+                         }
+                },{$skip : ((page*limit)-limit)},
+                { $limit : parseInt(limit) }
+              ]
+          })
+          console.log({limit},"oooo",((page*limit)-limit))
+          let count=await countData({
+          collection: schedulePostModel,
+            where,
+        })
+        let data ={
+          data : result,
+          count : count
+        }
+        console.log({data})
+          sendResponse(res,200,"",data)
+      } catch (e) {
+        console.log({e})
+        sendResponse(res,500, "Something went wrong.");
+      }
 
+  }
+scheduleController.multipost=async (req, res) => {
+    try {
+        let {page , limit,keys,target} =  req?.query || {};  
+        let user=req.user
+        let valid=validateData( req?.query ?? {}, {
+          target : {
+            type : "string"
+          },
+          page : {
+            type : "string"
+          },
+          limit : {
+            type : "string"
+          },
+        })
+  
+        if(Object.keys(valid).length!=0){
+          sendResponse(res,400,valid)
+          return
+        }
+        
+        let where = { userId: user._id,  scheduleId:new mongoose.Types.ObjectId(target) };
+        if(keys)
+        {
+          where.name= { $regex: keys, $options: "i" } 
+        }
+        console.log({where})
+         let result=await selectData({
+              collection: postModel,
+              where ,
+              limit, page
+          })
+          let count=await countData({
+          collection: postModel,
+            where,
+            
+        })
+        let data ={
+          data : result,
+          count : count
+        }
+          sendResponse(res,200,"",data)
+      } catch (e) {
+        console.log({e})
+        sendResponse(res,500, "Something went wrong.");
+      }
+
+  }
 scheduleController.createPost=async (req, res) => {
     try {
         let {caption, mediaUrl = [], scheduleDate, accounts, timeZone,type,postDate} = req.body;
@@ -36,7 +140,7 @@ scheduleController.createPost=async (req, res) => {
             sendResponse(res,400,valid)
             return
           }
-            // let userId=req.user._id
+            let userId=req.user._id
             
             if(type!="postnow")
             {
@@ -47,30 +151,33 @@ scheduleController.createPost=async (req, res) => {
                     return
                 }
             }
-           
+            const dat = new Date();
+            accounts=accounts.map((ele)=>  new mongoose.Types.ObjectId(ele))
           let d1= await insertData({
                 req, res,
                 collection: schedulePostModel,
                 data: {
                     type ,
-                    // userId,
+                    userId,
                     caption,
                     mediaUrl,
-                    scheduleDate,
+                    scheduleDate :dat ,
                     accounts,
                     timeZone,
-                    postDate,
+                    postDate :dat,
                 }
             })
             let arr=[]
             accounts.map((ele)=>{
                 let obj={
-                    // userId : { type: mongoose.Types.ObjectId , ref: "users" },
+                    userId,
                     scheduleId :d1._id,
                     accountId : ele,
                     caption ,
                     mediaUrl ,
                     type ,
+                    scheduleDate  :dat,
+                    postDate :dat,
                 }
 
                 arr.push(obj)
@@ -81,11 +188,8 @@ scheduleController.createPost=async (req, res) => {
                 collection: postModel,
                 data:arr
             })
-            console.log({post})
-                res.status(200).json({
-                    status: true,
-                    message: "Post scheduled successfully.",
-                });
+            sendResponse(res,201,"Post Created Successfully.")
+
           
           
         
@@ -157,11 +261,10 @@ scheduleController.createPost=async (req, res) => {
                         title,
                         caption,
                         mediaUrl,
-                        // scheduleDate,
+                        scheduleDate :sd,
                         accounts,
-                        // postOn,
                         timeZone,
-                        // postDate,
+                         postDate :sd,
                     }
                  })
                  if(update){

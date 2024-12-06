@@ -23,6 +23,7 @@ AWSHelper.multiuploadS3=async()=>{
 
 AWSHelper.uploadS3 = (file, remotePath, options = {}) => {
   return new Promise(async(resolve, reject) => {
+    try{
     let uploadParams = {
       ...defaultOptions,
       ...options,
@@ -50,7 +51,9 @@ AWSHelper.uploadS3 = (file, remotePath, options = {}) => {
           reject(data);
         }
       
-    
+      }catch(e){
+        reject(e);
+      }
    
   });
 };
