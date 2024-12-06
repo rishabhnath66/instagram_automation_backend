@@ -6,7 +6,6 @@ let requests = {};
 
 requests={
 get : {
-  
   '/addSocialAccount': socialController.addAccount,
 },
 post :{

@@ -164,12 +164,13 @@ authController.uploadMedia=async(req,res)=>{
               [file.fieldname]:f1.Key
             }
           }
+          console.log({data})
           let d2=await insertData({
             collection : assetsModel,
             data,
           })
           if(d2){
-            sendResponse(res,201, "file upload successfully.")
+            sendResponse(res,201, "file upload successfully.",data)
           }
         }
       }

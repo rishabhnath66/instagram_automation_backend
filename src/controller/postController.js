@@ -3,67 +3,85 @@ const {insertData, selectData, updateData } = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const schedulePostModel = require("../model/schedulePostModel");
 const { where } = require("../model/socialAccountModel");
+const postModel = require("../model/postModel");
 const scheduleController = {}
 
 
 
 scheduleController.createPost=async (req, res) => {
     try {
-        let { title, caption, mediaUrl = [], scheduleDate, accounts, timeZone, postDate,type} = req.body;
-
+        let {caption, mediaUrl = [], scheduleDate, accounts, timeZone,type,postDate} = req.body;
         let valid=validateData( req?.body ?? {}, {
-            title : {
-              type : "string"
-            },
             caption : {
               type : "string"
             },
             mediaUrl : {
                 type : "array"
             },
-            scheduleDate : {
-                type : "string"
-            },
+            // scheduleDate : {
+            //     type : "string"
+            // },
             accounts : {
                 type : "array"
             },
-            timeZone : {
-                type : "object"
-            },
-            postDate : {
+            // postDate : {
+            //     type : "string"
+            // },
+            type:{
                 type : "string"
             },
-            type : {
-                type : "string"
-            }
+         
           })
           if(Object.keys(valid).length!=0){
             sendResponse(res,400,valid)
             return
           }
-        // let userId=req.user._id
-      
-            const d = new Date();
-            let sd = postDate ? new Date(postDate) : new Date();
-            if (new Date() > sd) {
-                sendResponse(res,401,"Please choose future date and time as per selected timezone.");
-                return
+            // let userId=req.user._id
+            
+            if(type!="postnow")
+            {
+                const d = new Date();
+                let sd = postDate ? new Date(postDate) : new Date();
+                if (new Date() > sd) {
+                    sendResponse(res,401,"Please choose future date and time as per selected timezone.");
+                    return
+                }
             }
-           await insertData({
+           
+          let d1= await insertData({
                 req, res,
                 collection: schedulePostModel,
-                findOne: true,
                 data: {
-                    title,
+                    type ,
                     // userId,
                     caption,
                     mediaUrl,
-                    // scheduleDate,
+                    scheduleDate,
                     accounts,
                     timeZone,
-                    // postDate,
+                    postDate,
                 }
             })
+            let arr=[]
+            accounts.map((ele)=>{
+                let obj={
+                    // userId : { type: mongoose.Types.ObjectId , ref: "users" },
+                    scheduleId :d1._id,
+                    accountId : ele,
+                    caption ,
+                    mediaUrl ,
+                    type ,
+                }
+
+                arr.push(obj)
+
+            })
+            let post= await insertData({
+                req, res,
+                collection: postModel,
+                data:arr
+            })
+            console.log({post})
                 res.status(200).json({
                     status: true,
                     message: "Post scheduled successfully.",
