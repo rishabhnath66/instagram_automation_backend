@@ -16,7 +16,8 @@ let requests ={
     '/addUser': userController.addUser,
     '/updateUser': userController.updateUser,
     '/changeStatus': userController.changeStatus,
-    '/getUserConnectedInstragramAccounts' : socialController.getUserConnectedInstragramAccounts
+    '/getUserConnectedInstragramAccounts' : socialController.getUserConnectedInstragramAccounts,
+    '/updateTimeZone' : socialController.updateAccount
    },
    delete : {
     '/deleteUser': userController.deleteUser,

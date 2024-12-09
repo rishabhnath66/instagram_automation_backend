@@ -10,5 +10,5 @@ module.exports = mongoose.model('social_accounts', new mongoose.Schema({
     createdAt :{type: Date, default: Date.now},
     updatedAt :{type: Date, default: Date.now},
     engament : {type : Object},
-    TimeZone :  {type: String},
+    TimeZone :  {type: Object},
 }));

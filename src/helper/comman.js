@@ -107,7 +107,6 @@ module.exports = {
     return message;
   },
   sendResponse: (res, code, msg = null, data = undefined) => {
-    console.log({code})
     const messagelist = {
       200: "",
       204: "Resource Not Found",

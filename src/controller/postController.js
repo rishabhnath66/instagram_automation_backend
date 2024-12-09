@@ -2,7 +2,7 @@ const axios=require("axios")
 const {insertData, selectData, updateData, countData, aggregateData } = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const schedulePostModel = require("../model/schedulePostModel");
-const { where } = require("../model/socialAccountModel");
+const socialAccountModel = require("../model/socialAccountModel");
 const postModel = require("../model/postModel");
 const scheduleController = {}
 const mongoose = require('mongoose');
@@ -114,7 +114,7 @@ scheduleController.multipost=async (req, res) => {
   }
 scheduleController.createPost=async (req, res) => {
     try {
-        let {caption, mediaUrl = [], scheduleDate, accounts, timeZone,type,postDate} = req.body;
+        let {caption, mediaUrl = [], scheduleDate, accounts, timeZone,type,postDate,offset} = req.body;
         let valid=validateData( req?.body ?? {}, {
             caption : {
               type : "string"
@@ -122,34 +122,67 @@ scheduleController.createPost=async (req, res) => {
             mediaUrl : {
                 type : "array"
             },
-            // scheduleDate : {
-            //     type : "string"
-            // },
+            scheduleDate : {
+                type : "string"
+            },
             accounts : {
                 type : "array"
             },
-            // postDate : {
-            //     type : "string"
-            // },
+            offset : {
+                type : "number"
+            },
             type:{
                 type : "string"
             },
          
           })
+          let userTimer={}
           if(Object.keys(valid).length!=0){
             sendResponse(res,400,valid)
             return
           }
             let userId=req.user._id
-            
+            let sd
+
+            let userlist= await selectData({
+              collection: socialAccountModel,
+              data: {
+                  _id : {$in : accounts}
+              }
+          })
+          console.log({userlist})
             if(type!="postnow")
             {
+             
+              for(let user of userlist)
+              {
                 const d = new Date();
-                let sd = postDate ? new Date(postDate) : new Date();
+                let sd = new Date(scheduleDate)
+                let timezoneOffset = new Date().getTimezoneOffset()
+              // if(timezoneOffset>0)
+              // {
+              //   sd.setMinutes(sd.getMinutes() - (timezoneOffset))
+              // }else{
+              //   sd.setMinutes(sd.getMinutes() - (timezoneOffset *-1))
+              // }
+              sd.setMinutes(sd.getMinutes() +(timezoneOffset))
+              sd.setMinutes(sd.getMinutes() + (user.TimeZone.offset * 60))
+              // if(user.TimeZone.offset>0)
+              //   {
+              //     sd.setMinutes(sd.getMinutes() - (user.TimeZone.offset * 60))
+              //   }else{
+              //     sd.setMinutes(sd.getMinutes() - (user.TimeZone.offset * 60 *-1))
+              //   }
+             
+              console.log(new Date() ,sd ,"pppppppppppppppp",user.TimeZone.offset)
                 if (new Date() > sd) {
                     sendResponse(res,401,"Please choose future date and time as per selected timezone.");
                     return
+                }else{
+                  userTimer[user._id]=sd
                 }
+              }
+                
             }
             const dat = new Date();
             accounts=accounts.map((ele)=>  new mongoose.Types.ObjectId(ele))
@@ -176,12 +209,12 @@ scheduleController.createPost=async (req, res) => {
                     caption ,
                     mediaUrl ,
                     type ,
-                    scheduleDate  :dat,
-                    postDate :dat,
+                    scheduleDate  :userTimer[ele],
+                    postDate :userTimer[ele],
                 }
 
                 arr.push(obj)
-
+                console.log({obj})
             })
             let post= await insertData({
                 req, res,

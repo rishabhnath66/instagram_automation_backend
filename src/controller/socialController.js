@@ -1,16 +1,15 @@
 const axios=require("axios")
 const {insertData, selectData, updateData, countData, deleteData } = require("../services/dbservice");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
-const socialAccountModel = require("../model/socialAccountModel")
+const socialAccountModel = require("../model/socialAccountModel");
 const socialController = {}
-
+const TimeZone=require("../data/timeZone")
 
 
 socialController.addAccount=async (req, res) => {
     try {
         let userdata=req.query.state
         userdata=JSON.parse(userdata)
-        console.log({userdata})
         let reqobj = req.query;
         let response;
          response = await instragramAccAdd(reqobj.code, reqobj.redirect_uri)
@@ -30,7 +29,9 @@ socialController.addAccount=async (req, res) => {
               where,
               req, res
           });
-
+          console.log({userdata})
+           let t1= TimeZone.find((s1)=>s1.offset==userdata.timeZone)
+           console.log({t1})
            if(userdata.target){
              if(useraccount)
              {
@@ -39,7 +40,7 @@ socialController.addAccount=async (req, res) => {
                 limit: 1,
                 where,
                 data: {
-                    $set: { data: response.data , status: true  }
+                    $set: { data: response.data , status: true ,TimeZone: t1 }
                 },
                 req, res,
             });
@@ -55,7 +56,8 @@ socialController.addAccount=async (req, res) => {
                   data: {
                       userId :userdata.id,
                       accountId: id,
-                      data: response.data
+                      data: response.data,
+                     TimeZone: t1 
                   },
                   req, res,
               });
@@ -75,7 +77,45 @@ socialController.addAccount=async (req, res) => {
 
   }
 
-socialController.deleteAccount=async (req, res) => {
+socialController.updateAccount=async (req, res) => {
+    try {
+      let {target,TimeZone} =  req?.body || {};  
+      let user=req.user
+      console.log({TimeZone},req?.body)
+      let valid=validateData( req?.body ?? {}, {
+        target : {
+          type : "string"
+        },
+        TimeZone : {
+          type : "object"
+        }
+      })
+      if(Object.keys(valid).length!=0){
+        sendResponse(res,400,valid)
+        return
+      }
+      let where={ _id : target }
+      if(user.role=='user'){
+          where.userId=user._id
+        }
+       let result=await updateData({
+            collection: socialAccountModel,
+            limit: 1,
+            where,
+            data : {
+              TimeZone : TimeZone,
+            }
+        })
+
+          sendResponse(res,200,"TimeZone Updated Successfully ") 
+    } catch (e) {
+      console.log({e})
+      sendResponse(res,500, "Something went wrong.");
+    }
+  }
+
+
+  socialController.deleteAccount=async (req, res) => {
     try {
       let {target} =  req?.body || {};  
       let user=req.user
@@ -109,6 +149,7 @@ socialController.deleteAccount=async (req, res) => {
       sendResponse(res,500, "Something went wrong.");
     }
   }
+
 socialController.getInstragramAccountList=async (req, res) => {
     try {
       let {page , limit,keys} =  req?.query || {};  
@@ -194,6 +235,7 @@ socialController.getInstragramAccountList=async (req, res) => {
   }
 socialController.authLink=async (req, res) => {
     try {
+      console.log({TimeZone})
       let user=req.user
         const redirectUri = `https://localhost:3001/auth/addSocialAccount`
         const clientId = "3874145586148497";
@@ -231,7 +273,7 @@ socialController.authLink=async (req, res) => {
        let data1= await axios.request(config)
        console.log(data1)
         data1=data1.data
-       let details=await axios.get(`https://graph.instagram.com/me?fields=id,username&access_token=${data1.access_token}`)
+       let details=await axios.get(`https://graph.instagram.com/me?fields=id,username,name,account_type,profile_picture_url,followers_count,follows_count,media_count&access_token=${data1.access_token}`)
        let longtoken=await axios.get(`https://graph.instagram.com/access_token/?grant_type=ig_exchange_token&client_secret=63bd7ccb9064cb48221acd67664983dc&access_token=${data1.access_token}`)
         let dat={
           ...details.data,
