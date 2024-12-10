@@ -2,7 +2,7 @@ const schedulePostModel = require('../model/schedulePostModel');
 const socialAccountModel = require('../model/socialAccountModel');
 const postModel= require('../model/postModel');
 const { objectToQuery } = require('../helper/comman');
-const { selectData, updateData, insertData} =require('../services/dbservice');
+const { selectData, updateData, insertData} =require('../services/dbService');
 const { findOne } = require('../model/usersModel');
 
 let funObj = {

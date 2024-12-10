@@ -1,10 +1,10 @@
-const {insertData, selectData, updateData } = require("../services/dbservice");
+const {insertData, selectData, updateData } = require("../services/dbService");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const userModel = require("../model/usersModel")
 const assetsModel = require("../model/assetsModel")
 const authController = {}
 const multer = require('multer');
-const  AWSHelper = require("../services/awsservice");
+const  AWSHelper = require("../services/awsService");
 const upload = multer().any()
 const path = require('path'); 
 authController.login=async (req, res) => {

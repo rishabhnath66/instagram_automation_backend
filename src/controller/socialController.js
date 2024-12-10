@@ -1,5 +1,5 @@
 const axios=require("axios")
-const {insertData, selectData, updateData, countData, deleteData } = require("../services/dbservice");
+const {insertData, selectData, updateData, countData, deleteData } = require("../services/dbService");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const socialAccountModel = require("../model/socialAccountModel");
 const socialController = {}

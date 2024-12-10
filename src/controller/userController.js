@@ -1,4 +1,4 @@
-const {insertData, selectData, updateData ,deleteData, countData} = require("../services/dbservice");
+const {insertData, selectData, updateData ,deleteData, countData} = require("../services/dbService");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const userModel = require("../model/usersModel")
 const multer = require('multer')
