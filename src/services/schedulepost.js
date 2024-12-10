@@ -13,10 +13,10 @@ let funObj = {
         let from = new Date(Date.now() - 1000 * 60 * 10), //10 minutes
         to = new Date(),
         checkPostCond = {
-            // postDate: {
-            //     $gte: from,
-            //     $lte: to,
-            // },
+            postDate: {
+                $gte: from,
+                $lte: to,
+            },
             status : "initialize",
         };
         selectData({

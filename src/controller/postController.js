@@ -7,6 +7,11 @@ const postModel = require("../model/postModel");
 const scheduleController = {}
 const mongoose = require('mongoose');
 
+const TimeDiffrence=(offset1,offset2)=>{
+  const diff = offset1 - offset2;
+  const min =diff * 60
+  return min;
+}
 
 scheduleController.getPost=async (req, res) => {
     try {
@@ -142,7 +147,7 @@ scheduleController.createPost=async (req, res) => {
             return
           }
             let userId=req.user._id
-            let sd
+          
 
             let userlist= await selectData({
               collection: socialAccountModel,
@@ -150,40 +155,33 @@ scheduleController.createPost=async (req, res) => {
                   _id : {$in : accounts}
               }
           })
-          console.log({userlist})
+          let sd = new Date(scheduleDate)
+          let cd = new Date()
             if(type!="postnow")
             {
-             
               for(let user of userlist)
               {
-                const d = new Date();
-                let sd = new Date(scheduleDate)
-                let timezoneOffset = new Date().getTimezoneOffset()
-              // if(timezoneOffset>0)
-              // {
-              //   sd.setMinutes(sd.getMinutes() - (timezoneOffset))
-              // }else{
-              //   sd.setMinutes(sd.getMinutes() - (timezoneOffset *-1))
-              // }
-              sd.setMinutes(sd.getMinutes() +(timezoneOffset))
-              sd.setMinutes(sd.getMinutes() + (user.TimeZone.offset * 60))
-              // if(user.TimeZone.offset>0)
-              //   {
-              //     sd.setMinutes(sd.getMinutes() - (user.TimeZone.offset * 60))
-              //   }else{
-              //     sd.setMinutes(sd.getMinutes() - (user.TimeZone.offset * 60 *-1))
-              //   }
-             
-              console.log(new Date() ,sd ,"pppppppppppppppp",user.TimeZone.offset)
-                if (new Date() > sd) {
+              
+                let timezoneOffset = (new Date().getTimezoneOffset()/60)*-1
+                let dif=TimeDiffrence(timezoneOffset,user.TimeZone.offset)
+                let date=new Date(scheduleDate)
+                if(user.TimeZone.offset>timezoneOffset)
+                {
+                  date.setMinutes(date.getMinutes() + dif)
+                }else{
+                  date.setMinutes(date.getMinutes() -dif)
+                }
+                
+                 if (cd.getTime() > date.getTime()) {
                     sendResponse(res,401,"Please choose future date and time as per selected timezone.");
                     return
                 }else{
-                  userTimer[user._id]=sd
+                  userTimer[user._id]=date
                 }
               }
-                
             }
+                
+            
             const dat = new Date();
             accounts=accounts.map((ele)=>  new mongoose.Types.ObjectId(ele))
           let d1= await insertData({
@@ -194,10 +192,10 @@ scheduleController.createPost=async (req, res) => {
                     userId,
                     caption,
                     mediaUrl,
-                    scheduleDate :dat ,
+                    scheduleDate :sd ,
                     accounts,
                     timeZone,
-                    postDate :dat,
+                    postDate :sd,
                 }
             })
             let arr=[]
@@ -209,8 +207,8 @@ scheduleController.createPost=async (req, res) => {
                     caption ,
                     mediaUrl ,
                     type ,
-                    scheduleDate  :userTimer[ele],
-                    postDate :userTimer[ele],
+                    scheduleDate  :sd,
+                    postDate :new Date(userTimer[ele]),
                 }
 
                 arr.push(obj)
@@ -221,7 +219,9 @@ scheduleController.createPost=async (req, res) => {
                 collection: postModel,
                 data:arr
             })
-            sendResponse(res,201,"Post Created Successfully.")
+            if(post){
+              sendResponse(res,201,"Post Created Successfully.")
+            }
 
           
           
@@ -397,6 +397,11 @@ scheduleController.createPost=async (req, res) => {
     }
 
   }
+
+
+
+  
+
 
 
   module.exports = scheduleController
