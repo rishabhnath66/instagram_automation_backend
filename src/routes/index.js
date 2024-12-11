@@ -10,7 +10,7 @@ get : {
 },
 post :{
   '/register': authController.register,
-  '/uploadMedia': authController.uploadMedia,
+
   '/login': authController.login,
  
 },

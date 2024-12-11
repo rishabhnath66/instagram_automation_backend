@@ -223,9 +223,6 @@ scheduleController.createPost=async (req, res) => {
               sendResponse(res,201,"Post Created Successfully.")
             }
 
-          
-          
-        
     } catch (error) {
         console.log({error})
       sendResponse(res,500,"Someting went wrong",error)
@@ -322,74 +319,117 @@ scheduleController.createPost=async (req, res) => {
 
   scheduleController.multiCreatePost=async (req, res) => {
     try {
-        let { scheduleDate, timeZone, postDate,type ,postList} = req.body;
+      let { postList,scheduleDate,timeZone,type} = req.body;
 
-        let valid=validateData( req?.body ?? {}, {
-            scheduleDate : {
-                type : "string"
-            },
-            timeZone : {
-                type : "object"
-            },
-            postDate : {
-                type : "string"
-            },
-            type : {
-                type : "string"
-            },
-            postList : {
-                type : "array",
-                require : [ "title", "caption", "mediaUrl" ,"accounts"]
-            }
-          })
-          if(Object.keys(valid).length!=0){
-            sendResponse(res,400,valid)
-            return
-          }
-        // let userId=req.user._id
-        
-            const d = new Date();
-            let sd = postDate ? new Date(postDate) : new Date();
-            if (new Date() > sd) {
-                sendResponse(res,401,"Please choose future date and time as per selected timezone.")
-                return
-            }
-            let insPostList = [],
-            draftIdAry = [];
-
-        for (let postData of postList) {
-            
-            let { title, caption, mediaUrl ,accounts} = postData;
+      let valid=validateData( req?.body ?? {}, {
+          postList : {
+              type : "array"
+          },
+          scheduleDate : {
+              type : "string"
+          },
+          timeZone : {
+            type : "object"
+          },
           
-            if (caption.trim() != '' || mediaUrl.length) {
-                insPostList.push({
-                    title,
-                    // userId,
-                    caption,
-                    mediaUrl,
-                    // scheduleDate: scheduleDate,
-                    accounts,
-                    timeZone,
-                    // postDate: postDate,
-                });
-
-            }
-        }
-
-        if (insPostList.length) {
-           await insertData({
-                req, res,
-                collection: schedulePostModel,
-                findOne: true,
-                data: insPostList
-            })
-        sendResponse(res,201,"Post scheduled successfully.")
-        } else {
-            sendResponse(res,204,"No any post to schedule.")
+        })
+        let userTimer={}
+     let postData=[]
+      for(let i=0;i<postList.length;i++)
+      {
+        let { title, caption, mediaUrl = [], accounts}=postList[i];
       
+        let userlist= await selectData({
+          collection: socialAccountModel,
+          data: {
+              _id : {$in : accounts}
+          }
+      })
+      let sd = new Date(scheduleDate)
+      let cd = new Date()
+        if(type!="postnow")
+        {
+          for(let user of userlist)
+          {
+            let timezoneOffset = (new Date().getTimezoneOffset()/60)*-1
+            let dif=TimeDiffrence(timezoneOffset,user.TimeZone.offset)
+            let date=new Date(scheduleDate)
+            if(user.TimeZone.offset>timezoneOffset)
+            {
+              date.setMinutes(date.getMinutes() + dif)
+            }else{
+              date.setMinutes(date.getMinutes() -dif)
+            }
+             if (cd.getTime() > date.getTime()) {
+                sendResponse(res,401,"Please choose future date and time as per selected timezone.");
+                return
+            }else{
+              userTimer[user._id]=date
+            }
+          }
         }
-            
-          
+
+          let data ={
+            type ,
+            userId,
+            caption,
+            mediaUrl,
+            scheduleDate :sd ,
+            accounts,
+            timeZone,
+            postDate :sd,
+          }
+          postData.push(data)
+      }
+      for(let i =0 ; i<postData.length;i++){
+        let {
+          type ,
+          userId,
+          caption,
+          mediaUrl,
+          scheduleDate ,
+          accounts,
+          timeZone,
+          postDate ,
+        }=postData[i]
+
+        let d1= await insertData({
+          req, res,
+          collection: schedulePostModel,
+          data: {
+              type ,
+              userId,
+              caption,
+              mediaUrl,
+              scheduleDate ,
+              accounts,
+              timeZone,
+              postDate :sd,
+          }
+      })
+      let arr=[]
+      accounts.map((ele)=>{
+          let obj={
+              userId,
+              scheduleId :d1._id,
+              accountId : ele,
+              caption ,
+              mediaUrl ,
+              type ,
+              scheduleDate  :sd,
+              postDate :new Date(userTimer[ele]),
+          }
+
+          arr.push(obj)
+      })
+      let post= await insertData({
+          req, res,
+          collection: postModel,
+          data:arr
+      })
+
+      }
+       sendResponse(res,201,"Posts Created Successfully.")
         
     } catch (error) {
         console.log({error})

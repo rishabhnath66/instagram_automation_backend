@@ -1,8 +1,11 @@
 const {insertData, selectData, updateData ,deleteData, countData} = require("../services/dbService");
 const {encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse ,} = require("../helper/comman");
 const userModel = require("../model/usersModel")
-const multer = require('multer')
-const upload = multer().single('avatar')
+const multer = require('multer');
+const  AWSHelper = require("../services/awsService");
+const upload = multer().any()
+const path = require('path'); 
+const assetsModel = require("../model/assetsModel");
 
 const userController = {}
 
@@ -300,6 +303,49 @@ const userController = {}
     } catch (e) {
       console.log({e})
       sendResponse(res,500, "Something went wrong.",e);
+    }
+  }
+
+
+  userController.uploadMedia=async(req,res)=>{
+    try{
+      upload(req, res, async (err)=> {
+        console.log({err})
+        if (err instanceof multer.MulterError) {
+          sendResponse(res,500, "Something went wrong.",err);
+        } else if (err) {
+          sendResponse(res,500, "Something went wrong.",err);
+        }else{
+
+      let user=req.user
+       let data={}
+          if(req.files){
+            data.title=req.body.title
+            data.mediaType=req.body.mediaType
+            for(let file of req.files){
+              console.log(AWSHelper.uploadS3,"AWSHelper.uploadS3")
+              let ext = path.extname(file.originalname)
+              let name= "File_"+Date.now()+ext
+             let remotepath=`instragram/user/${user._id}/`+name
+             let f1=await AWSHelper.uploadS3(file , remotepath,{})
+              data.files={
+                ...data?.files,
+                [file.fieldname]:f1.Key
+              }
+            }
+            console.log({data})
+            let d2=await insertData({
+              collection : assetsModel,
+              data,
+            })
+            if(d2){
+              sendResponse(res,201, "file upload successfully.",data)
+            }
+          }
+        }
+      })
+    }catch(e){
+  console.log({e})
     }
   }
   module.exports = userController
