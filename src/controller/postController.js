@@ -6,6 +6,7 @@ const socialAccountModel = require("../model/socialAccountModel");
 const postModel = require("../model/postModel");
 const scheduleController = {}
 const mongoose = require('mongoose');
+const comman = require("../helper/comman");
 
 
 scheduleController.getPost = async (req, res) => {
@@ -394,5 +395,20 @@ scheduleController.multiCreatePost = async (req, res) => {
 
 }
 
+scheduleController.generateVariation = async (req, res) => {
+  try {
+    let postData = req.body;
+    let data = {
+      text: `This is my content for facebook post.`
+    }
+    let variation = await comman.generatePostVariation(data)
+    console.log('variation', variation);
+    sendResponse(res, 201, "variation created successfully.", variation)
+  }
+  catch (error) {
+    console.log({ error })
+    sendResponse(res, 500, "Someting went wrong", error)
+  }
+}
 
 module.exports = scheduleController
