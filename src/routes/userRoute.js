@@ -30,6 +30,7 @@ let allowrequest ={
   '/addUser' : ["admin","subadmin"],
   '/deleteUser' : ["admin","subadmin"],
   '/changeStatus' :  ["admin","subadmin"],
+  '/getinstragramAccountlist' : ["subadmin","user"]
 }
 
 let list = Object.keys(allowrequest)
