@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const postController = require("../controller/postController");
 const middlewareModule = require('../middleware/middleware');
+const openaiController = require('../controller/openaiController')
 
 let requests = {
   get: {
@@ -12,7 +13,9 @@ let requests = {
     "/createPost": postController.createPost,
     "/updatePost": postController.updatePost,
     "/multiCreatePost": postController.multiCreatePost,
-    "/generateVariation": postController.generateVariation
+    "/generateVariation": openaiController.generateVariation,
+    "/generatetext": openaiController.generateTextUsingOpenAI,
+    "/generateImage": openaiController.generateImageUsingPrompt
   },
   delete: {
 
