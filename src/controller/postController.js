@@ -12,6 +12,136 @@ const TimeDiffrence=(offset1,offset2)=>{
   const min =diff * 60
   return min;
 }
+scheduleController.getCalenderPost=async (req, res) => {
+  try {
+      let {page , limit,keys,startDate,endDate} =  req?.query || {};  
+      let user=req.user
+      let valid=validateData( req?.query ?? {}, {
+        page : {
+          type : "string"
+        },
+        limit : {
+          type : "string"
+        },
+      })
+
+      if(Object.keys(valid).length!=0){
+        sendResponse(res,400,valid)
+        return
+      }
+      let where={userId :user._id }
+      if(keys)
+      {
+        where.name= { $regex: keys, $options: "i" } 
+      }
+
+      if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
+        where.postDate = {
+            $gte: new Date(startDate),
+            $lt: new Date(endDate)
+        };
+    }
+    //  let cond=[
+    //   {$match : where},
+    //   {
+        
+    //       $lookup: {
+    //              from: "social_accounts",
+    //              localField: "accounts",
+    //              foreignField: "_id",
+    //              as: "data"
+    //            }
+    //   }]
+    //   if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+    //     cond.push({$skip : ((page*limit)-limit)})
+    //     cond.push({ $limit : parseInt(limit) })
+    // }
+
+    console.log({where})
+       let result=await selectData({
+            collection: postModel,
+            where : where
+        })
+        let count=await countData({
+        collection: postModel,
+          where,
+      })
+      let data ={
+        data : result,
+        count : count
+      }
+      console.log({data})
+        sendResponse(res,200,"",data)
+    } catch (e) {
+      console.log({e})
+      sendResponse(res,500, "Something went wrong.");
+    }
+
+}
+scheduleController.getPost=async (req, res) => {
+  try {
+      let {page , limit,keys,startDate,endDate} =  req?.query || {};  
+      let user=req.user
+      let valid=validateData( req?.query ?? {}, {
+        page : {
+          type : "string"
+        },
+        limit : {
+          type : "string"
+        },
+      })
+
+      if(Object.keys(valid).length!=0){
+        sendResponse(res,400,valid)
+        return
+      }
+      let where={userId :user._id }
+      if(keys)
+      {
+        where.name= { $regex: keys, $options: "i" } 
+      }
+
+      if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
+        where.postDate = {
+            $gte: new Date(startDate),
+            $lt: new Date(endDate)
+        };
+    }
+     let cond=[
+      {$match : where},
+      {
+        
+          $lookup: {
+                 from: "social_accounts",
+                 localField: "accounts",
+                 foreignField: "_id",
+                 as: "data"
+               }
+      }]
+      if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+        cond.push({$skip : ((page*limit)-limit)})
+        cond.push({ $limit : parseInt(limit) })
+    }
+       let result=await aggregateData({
+            collection: schedulePostModel,
+            aggregateCnd : cond
+        })
+        let count=await countData({
+        collection: schedulePostModel,
+          where,
+      })
+      let data ={
+        data : result,
+        count : count
+      }
+      console.log({data})
+        sendResponse(res,200,"",data)
+    } catch (e) {
+      console.log({e})
+      sendResponse(res,500, "Something went wrong.");
+    }
+
+}
 
 scheduleController.getPost=async (req, res) => {
     try {
@@ -175,7 +305,7 @@ scheduleController.createPost=async (req, res) => {
 
             let userlist= await selectData({
               collection: socialAccountModel,
-              data: {
+              where: {
                   _id : {$in : accounts}
               }
           })
@@ -183,6 +313,7 @@ scheduleController.createPost=async (req, res) => {
           let cd = new Date()
             if(type!="postnow")
             {
+              console.log("accounts",accounts)
               for(let user of userlist)
               {
               
@@ -223,7 +354,9 @@ scheduleController.createPost=async (req, res) => {
                 }
             })
             let arr=[]
+           
             accounts.map((ele)=>{
+              console.log({type},userTimer,userTimer[ele],(type!="postnow" ? new Date(userTimer[ele]) : sd))
                 let obj={
                     userId,
                     scheduleId :d1._id,
@@ -232,11 +365,10 @@ scheduleController.createPost=async (req, res) => {
                     mediaUrl ,
                     type ,
                     scheduleDate  :sd,
-                    postDate :type!="postnow" ? new Date(userTimer[ele]) : sd,
+                    postDate :(type!="postnow" ? new Date(userTimer[ele]) : sd),
                 }
 
                 arr.push(obj)
-                console.log({obj})
             })
             let post= await insertData({
                 collection: postModel,

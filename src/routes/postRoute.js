@@ -6,6 +6,7 @@ const middlewareModule = require('../middleware/middleware');
 let requests ={
   get : {
     "/getPost" : postController.getPost,
+    "/getCalenderPost" : postController.getCalenderPost,
     "/multipost" : postController.multipost,
   },
   post : {
