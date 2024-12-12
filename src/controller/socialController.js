@@ -154,6 +154,7 @@ socialController.getInstragramAccountList=async (req, res) => {
     try {
       let {page , limit,keys} =  req?.query || {};  
       let user=req.user
+      console.log({user})
       let valid=validateData( req?.query ?? {}, {
         page : {
           type : "string"
@@ -168,8 +169,12 @@ socialController.getInstragramAccountList=async (req, res) => {
         return
       }
       let where={userId :user._id}
-      if(user.role=="user" ){
-        where={userId :user.parentId}
+      if(user.role=="subadmin" ){
+        where={userId :user._id}
+      }else{
+        if(user.role=="user" ){
+          where={_id  :{$in : user.accounts}}
+        }
       }
       
       if(keys)

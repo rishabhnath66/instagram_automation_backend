@@ -71,18 +71,21 @@ let dbService = {
                 }
                 
             }
-
-            if(limit && limit != 'all'){
-                createObj.limit(limit);
+            if(limit != 'all')
+            {
+                if(limit ){
+                    createObj.limit(limit);
+                }
+    
+                if(skip ){
+                    createObj.skip(skip);
+                }
+    
+                if(page ){
+                    createObj.skip((page-1)*limit);
+                }
             }
-
-            if(skip){
-                createObj.skip(skip);
-            }
-
-            if(page && limit != 'all'){
-                createObj.skip((page-1)*limit);
-            }
+           
 
             if(sort && sort != ''){
                 let shBoj = {},

@@ -17,7 +17,8 @@ let requests ={
     '/updateUser': userController.updateUser,
     '/changeStatus': userController.changeStatus,
     '/getUserConnectedInstragramAccounts' : socialController.getUserConnectedInstragramAccounts,
-    '/updateTimeZone' : socialController.updateAccount
+    '/updateTimeZone' : socialController.updateAccount,
+    '/uploadMedia': userController.uploadMedia,
    },
    delete : {
     '/deleteUser': userController.deleteUser,
@@ -29,6 +30,7 @@ let allowrequest ={
   '/addUser' : ["admin","subadmin"],
   '/deleteUser' : ["admin","subadmin"],
   '/changeStatus' :  ["admin","subadmin"],
+  '/getinstragramAccountlist' : ["subadmin","user"]
 }
 
 let list = Object.keys(allowrequest)
