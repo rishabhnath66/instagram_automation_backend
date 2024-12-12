@@ -26,7 +26,18 @@ authController.login=async (req, res) => {
         where: { email },
     })
         if (checkUser) {
-         if(checkUser.isDeleted){
+          if(checkUser.parentId){
+            let parentUser=await selectData({
+              collection: userModel,
+              findOne: true,
+              where: { _id :  checkUser.parentId},
+          })
+          if(!parentUser.status){
+            sendResponse(res,403, "Your account is in-active, please contact to admin.");
+            return
+          }
+        }
+          if(checkUser.isDeleted){
                 sendResponse(res,422 ,valid)
             }else if(!checkUser.status){
                sendResponse(res,403, "Your account is in-active, please contact to admin.");

@@ -15,7 +15,7 @@ const TimeDiffrence=(offset1,offset2)=>{
 
 scheduleController.getPost=async (req, res) => {
     try {
-        let {page , limit,keys} =  req?.query || {};  
+        let {page , limit,keys,startDate,endDate} =  req?.query || {};  
         let user=req.user
         let valid=validateData( req?.query ?? {}, {
           page : {
@@ -35,24 +35,32 @@ scheduleController.getPost=async (req, res) => {
         {
           where.name= { $regex: keys, $options: "i" } 
         }
-        // console.log({where})
+
+        if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
+          where.postDate = {
+              $gte: new Date(startDate),
+              $lt: new Date(endDate)
+          };
+      }
+       let cond=[
+        {$match : where},
+        {
+          
+            $lookup: {
+                   from: "social_accounts",
+                   localField: "accounts",
+                   foreignField: "_id",
+                   as: "data"
+                 }
+        }]
+        if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+          cond.push({$skip : ((page*limit)-limit)})
+          cond.push({ $limit : parseInt(limit) })
+      }
          let result=await aggregateData({
               collection: schedulePostModel,
-              aggregateCnd : [
-                {$match : {userId :user._id }},
-                {
-                  
-                    $lookup: {
-                           from: "social_accounts",
-                           localField: "accounts",
-                           foreignField: "_id",
-                           as: "data"
-                         }
-                },{$skip : ((page*limit)-limit)},
-                { $limit : parseInt(limit) }
-              ]
+              aggregateCnd : cond
           })
-          console.log({limit},"oooo",((page*limit)-limit))
           let count=await countData({
           collection: schedulePostModel,
             where,

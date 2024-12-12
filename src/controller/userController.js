@@ -310,7 +310,6 @@ const userController = {}
   userController.uploadMedia=async(req,res)=>{
     try{
       upload(req, res, async (err)=> {
-        console.log({err})
         if (err instanceof multer.MulterError) {
           sendResponse(res,500, "Something went wrong.",err);
         } else if (err) {
@@ -323,7 +322,6 @@ const userController = {}
             data.title=req.body.title
             data.mediaType=req.body.mediaType
             for(let file of req.files){
-              console.log(AWSHelper.uploadS3,"AWSHelper.uploadS3")
               let ext = path.extname(file.originalname)
               let name= "File_"+Date.now()+ext
              let remotepath=`instragram/user/${user._id}/`+name
