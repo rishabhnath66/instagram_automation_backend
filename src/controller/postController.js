@@ -93,6 +93,10 @@ scheduleController.multipost=async (req, res) => {
           },
         })
   
+
+        
+           
+        
         if(Object.keys(valid).length!=0){
           sendResponse(res,400,valid)
           return
@@ -103,11 +107,23 @@ scheduleController.multipost=async (req, res) => {
         {
           where.name= { $regex: keys, $options: "i" } 
         }
-        console.log({where})
-         let result=await selectData({
+        let cond=[
+          {$match : where},
+          {
+            
+              $lookup: {
+                     from: "social_accounts",
+                     localField: "accountId",
+                     foreignField: "_id",
+                     as: "data"
+                   }
+          },
+          {$skip : ((page*limit)-limit)},
+          { $limit : parseInt(limit) }
+        ]
+         let result=await aggregateData({
               collection: postModel,
-              where ,
-              limit, page
+              aggregateCnd : cond
           })
           let count=await countData({
           collection: postModel,
@@ -211,19 +227,18 @@ scheduleController.createPost=async (req, res) => {
                 let obj={
                     userId,
                     scheduleId :d1._id,
-                    accountId : ele,
+                    accountId : new mongoose.Types.ObjectId(ele),
                     caption ,
                     mediaUrl ,
                     type ,
                     scheduleDate  :sd,
-                    postDate :new Date(userTimer[ele]),
+                    postDate :type!="postnow" ? new Date(userTimer[ele]) : sd,
                 }
 
                 arr.push(obj)
                 console.log({obj})
             })
             let post= await insertData({
-                req, res,
                 collection: postModel,
                 data:arr
             })
@@ -420,7 +435,7 @@ scheduleController.createPost=async (req, res) => {
           let obj={
               userId,
               scheduleId :d1._id,
-              accountId : ele,
+              accountId : new mongoose.Types.ObjectId(ele),
               caption ,
               mediaUrl ,
               type ,
