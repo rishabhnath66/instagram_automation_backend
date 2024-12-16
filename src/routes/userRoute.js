@@ -23,6 +23,9 @@ let requests ={
    delete : {
     '/deleteUser': userController.deleteUser,
     '/deleteAccount': socialController.deleteAccount,
+   },
+   patch : {
+    '/updateUserdata': userController.updateUserdata,
    }
 }
 let allowrequest ={

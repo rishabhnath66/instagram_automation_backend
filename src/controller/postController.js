@@ -108,17 +108,103 @@ scheduleController.getPost=async (req, res) => {
         };
     }
      let cond=[
-      {$match : where},
+      { 
+        $match: where 
+      },
       {
-        
-          $lookup: {
-                 from: "social_accounts",
-                 localField: "accounts",
-                 foreignField: "_id",
-                 as: "data"
-               }
-      }]
-      if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+        $lookup: {
+          from: "social_accounts",
+          localField: "accounts",
+          foreignField: "_id",
+          as: "data"
+        }
+      },
+      {
+        $lookup: {
+          from: "posts",
+          localField: "_id",
+          foreignField: "scheduleId",
+          as: "postdata"
+        }
+      },
+      {
+        $project: {
+          scheduleDate: -1,
+          caption: -1,
+          mediaUrl: -1,
+          data: -1,
+          _id: 1,
+          status: {
+            $cond: {
+              if: { 
+                $eq: [
+                  { 
+                    $size: {
+                      $filter: {
+                        input: "$postdata", 
+                        as: "item", 
+                        cond: { $eq: ["$$item.status", "completed"] }
+                      }
+                    }
+                  },
+                  { $size: "$postdata" }
+                ]
+              },
+              then: "completed",
+              else: {
+                $cond: {
+                  if: { 
+                    $eq: [
+                      { 
+                        $size: {
+                          $filter: {
+                            input: "$postdata",
+                            as: "item",
+                            cond: { $eq: ["$$item.status", "initialize"] }
+                          }
+                        }
+                      },
+                      { $size: "$postdata" }
+                    ]
+                  },
+                  then: "pending",
+                  else: {
+                    $cond: {
+                      if: { 
+                        $gt: [
+                          { 
+                            $size: {
+                              $filter: {
+                                input: "$postdata", 
+                                as: "item", 
+                                cond: { $eq: ["$$item.status", "Failed"] }
+                              }
+                            }
+                          },
+                          0
+                        ]
+                      },
+                      then: "Partial Published",
+                      else: "In Process"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          post: {
+            $cond: {
+              if: { $eq: [1, { $size: "$postdata" }] },
+              then: "$postdata",
+              else: []
+            }
+          }
+        }
+      }
+    ]
+    
+      cond.push({$sort :{_id : -1}})
+  if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
         cond.push({$skip : ((page*limit)-limit)})
         cond.push({ $limit : parseInt(limit) })
     }
@@ -143,90 +229,85 @@ scheduleController.getPost=async (req, res) => {
 
 }
 
-scheduleController.getPost=async (req, res) => {
-    try {
-        let {page , limit,keys,startDate,endDate} =  req?.query || {};  
-        let user=req.user
-        let valid=validateData( req?.query ?? {}, {
-          page : {
-            type : "string"
-          },
-          limit : {
-            type : "string"
-          },
-        })
+// scheduleController.getPost=async (req, res) => {
+//     try {
+//         let {page , limit,keys,startDate,endDate} =  req?.query || {};  
+//         let user=req.user
+//         let valid=validateData( req?.query ?? {}, {
+//           page : {
+//             type : "string"
+//           },
+//           limit : {
+//             type : "string"
+//           },
+//         })
   
-        if(Object.keys(valid).length!=0){
-          sendResponse(res,400,valid)
-          return
-        }
-        let where={userId :user._id }
-        if(keys)
-        {
-          where.name= { $regex: keys, $options: "i" } 
-        }
+//         if(Object.keys(valid).length!=0){
+//           sendResponse(res,400,valid)
+//           return
+//         }
+//         let where={userId :user._id }
+//         if(keys)
+//         {
+//           where.name= { $regex: keys, $options: "i" } 
+//         }
 
-        if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
-          where.postDate = {
-              $gte: new Date(startDate),
-              $lt: new Date(endDate)
-          };
-      }
-       let cond=[
-        {$match : where},
-        {
+//         if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
+//           where.postDate = {
+//               $gte: new Date(startDate),
+//               $lt: new Date(endDate)
+//           };
+//       }
+//        let cond=[
+//         {$match : where},
+//         {
           
-            $lookup: {
-                   from: "social_accounts",
-                   localField: "accounts",
-                   foreignField: "_id",
-                   as: "data"
-                 }
-        }]
-        if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
-          cond.push({$skip : ((page*limit)-limit)})
-          cond.push({ $limit : parseInt(limit) })
-      }
-         let result=await aggregateData({
-              collection: schedulePostModel,
-              aggregateCnd : cond
-          })
-          let count=await countData({
-          collection: schedulePostModel,
-            where,
-        })
-        let data ={
-          data : result,
-          count : count
-        }
-        console.log({data})
-          sendResponse(res,200,"",data)
-      } catch (e) {
-        console.log({e})
-        sendResponse(res,500, "Something went wrong.");
-      }
+//             $lookup: {
+//                    from: "social_accounts",
+//                    localField: "accounts",
+//                    foreignField: "_id",
+//                    as: "data"
+//                  }
+//         }]
+//         if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+//           cond.push({$skip : ((page*limit)-limit)})
+//           cond.push({ $limit : parseInt(limit) })
+//       }
+//          let result=await aggregateData({
+//               collection: schedulePostModel,
+//               aggregateCnd : cond
+//           })
+//           let count=await countData({
+//           collection: schedulePostModel,
+//             where,
+//         })
+//         let data ={
+//           data : result,
+//           count : count
+//         }
+//         console.log({data})
+//           sendResponse(res,200,"",data)
+//       } catch (e) {
+//         console.log({e})
+//         sendResponse(res,500, "Something went wrong.");
+//       }
 
-  }
+//   }
 scheduleController.multipost=async (req, res) => {
     try {
-        let {page , limit,keys,target} =  req?.query || {};  
+        let {page , limit,keys,target,sort=""} =  req?.query || {};  
         let user=req.user
         let valid=validateData( req?.query ?? {}, {
           target : {
             type : "string"
           },
-          page : {
-            type : "string"
-          },
-          limit : {
-            type : "string"
-          },
+          // page : {
+          //   type : "string"
+          // },
+          // limit : {
+          //   type : "string"
+          // },
         })
-  
-
-        
-           
-        
         if(Object.keys(valid).length!=0){
           sendResponse(res,400,valid)
           return
@@ -248,9 +329,22 @@ scheduleController.multipost=async (req, res) => {
                      as: "data"
                    }
           },
-          {$skip : ((page*limit)-limit)},
-          { $limit : parseInt(limit) }
+          // {$skip : ((page*limit)-limit)},
+          // { $limit : parseInt(limit) },
         ]
+        if(sort)
+        {
+           let s1=sort.split("=")
+           if(s1.length>0)
+           {
+            console.log({s1})
+            console.log({[s1[0]] : s1[1]},"{[s1[0]] : s1[1]}");
+            
+            cond.push({$sort : {[s1[0]] : parseInt(s1[1])}})
+            // cond.push({$sort : {_id :-1}})
+           }
+         
+        }
          let result=await aggregateData({
               collection: postModel,
               aggregateCnd : cond

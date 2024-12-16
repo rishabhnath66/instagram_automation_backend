@@ -90,6 +90,7 @@ let dbService = {
             if(sort && sort != ''){
                 let shBoj = {},
                 chkSort = sort.split(',');
+                console.log(chkSort,"chkSort")
                 if(chkSort.length){
                     chkSort.map(sh =>{
                         let chkD = sh.split('=');
@@ -99,6 +100,7 @@ let dbService = {
                         }
                     });
                 }
+                console.log({shBoj})
                 createObj.sort(shBoj);
             }else{
                 createObj.sort({createdAt : -1});

@@ -346,4 +346,71 @@ const userController = {}
   console.log({e})
     }
   }
-  module.exports = userController
+
+
+  userController.updateUserdata = async (req, res) => {
+    try {
+      console.log("abc")
+      upload(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+          sendResponse(res, 500, "Something went wrong.", err);
+        } else if (err) {
+          sendResponse(res, 500, "Something went wrong.", err);
+        } else {
+          let user = req.user;
+          let { name, password } = req.body;
+          let data = {};
+          let valid = validateData(req?.body ?? {}, {
+            name: {
+              type: "string",
+            },
+          });
+
+          if (Object.keys(valid).length != 0) {
+            sendResponse(res, 400, valid);
+            return;
+          }
+          data = { name };
+          if (req.files) {
+            data.title = req.body.title;
+            data.mediaType = req.body.mediaType;
+            for (let file of req.files) {
+              let ext = path.extname(file.originalname);
+              let name = "File_" + Date.now() + ext;
+              let remotepath = `instragram/user/${user._id}/` + name;
+              let f1 = await AWSHelper.uploadS3(file, remotepath, {});
+              data.profilePic = f1;
+            }
+          }
+
+          let result = await selectData({
+            collection: userModel,
+            findOne: true,
+            where: { _id: user._id },
+          });
+          if (!result) {
+            sendResponse(res, 409, "User not exits.");
+          } else {
+            let data = {
+              name,
+            };
+            if (password) {
+              data.password = await encrypt(password);
+            }
+            await updateData({
+              req,
+              res,
+              collection: userModel,
+              where: { _id: user._id },
+              data,
+              limit: 1,
+            });
+            sendResponse(res, 200, "User Updated Succesfully.");
+          }
+        }
+      });
+    } catch (e) {
+      console.log({ e });
+    }
+  };
+  module.exports = userController;

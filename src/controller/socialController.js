@@ -115,7 +115,7 @@ socialController.updateAccount=async (req, res) => {
   }
 
 
-  socialController.deleteAccount=async (req, res) => {
+socialController.deleteAccount=async (req, res) => {
     try {
       let {target} =  req?.body || {};  
       let user=req.user
@@ -152,7 +152,7 @@ socialController.updateAccount=async (req, res) => {
 
 socialController.getInstragramAccountList=async (req, res) => {
     try {
-      let {page , limit,keys} =  req?.query || {};  
+      let {page , limit,keys,sort=""} =  req?.query || {};  
       let user=req.user
       console.log({user})
       let valid=validateData( req?.query ?? {}, {
@@ -181,12 +181,14 @@ socialController.getInstragramAccountList=async (req, res) => {
       {
         where["data.username"]= { $regex: keys, $options: "i" } 
       }
-      console.log({where})
+   
+      console.log({sort})
        let result=await selectData({
             collection: socialAccountModel,
             where,
             limit : limit, 
             page : page,
+            sort ,
         })
         let count=await countData({
         collection: socialAccountModel,
@@ -204,7 +206,7 @@ socialController.getInstragramAccountList=async (req, res) => {
   }
 
 
-  socialController.getUserConnectedInstragramAccounts=async (req, res) => {
+socialController.getUserConnectedInstragramAccounts=async (req, res) => {
     try {
       let {ids} =  req?.body || {};  
       let user=req.user
