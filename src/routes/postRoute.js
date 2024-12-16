@@ -13,6 +13,8 @@ let requests = {
     "/createPost": postController.createPost,
     "/updatePost": postController.updatePost,
     "/multiCreatePost": postController.multiCreatePost,
+    "/textVariation": postController.textVariation,
+
     "/generateVariation": openaiController.generateVariation,
     "/generatetext": openaiController.generateTextUsingOpenAI,
     "/generateImage": openaiController.generateImageUsingPrompt

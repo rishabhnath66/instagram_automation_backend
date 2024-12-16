@@ -395,13 +395,19 @@ scheduleController.multiCreatePost = async (req, res) => {
 
 }
 
-scheduleController.generateVariation = async (req, res) => {
+scheduleController.textVariation = async (req, res) => {
   try {
     let postData = req.body;
+    console.log('postData', postData.accounts);
+
     let data = {
       text: `This is my content for facebook post.`
     }
-    let variation = await comman.generatePostVariation(data)
+    // let variation = await comman.generatePostVariation(data)
+
+    let variation = await postDescriptions(postData.accounts)
+
+
     console.log('variation', variation);
     sendResponse(res, 201, "variation created successfully.", variation)
   }
@@ -411,4 +417,21 @@ scheduleController.generateVariation = async (req, res) => {
   }
 }
 
+async function postDescriptions(acc) {
+  let des = [
+    { description: 'This is my description 1' },
+    { description: 'This is my description 2' },
+    { description: 'This is my description 3' },
+    { description: 'This is my description 4' },
+    { description: 'This is my description 5' }
+  ]
+
+  let newarr = []
+  const lengthToCheck = Math.min(acc.length, des.length);
+  for (let i = 0; i < lengthToCheck; i++) {
+    newarr.push(des[i]);
+  }
+
+  return newarr;
+}
 module.exports = scheduleController
