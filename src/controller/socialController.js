@@ -6,7 +6,6 @@ const socialController = {}
 const TimeZone = require("../data/timeZone");
 const { default: mongoose } = require("mongoose");
 
-
 socialController.addAccount = async (req, res) => {
   try {
     let userdata = req.query.state
@@ -198,6 +197,35 @@ socialController.getInstragramAccountList = async (req, res) => {
   } catch (e) {
     console.log(e)
     sendResponse(res, 500, "Something went wrong.", e);
+  }
+}
+
+socialController.getSelectedAccounts = async (req, res) => {
+  try {
+    let user = req.user
+    let postData = req.body.accounts
+
+    let objectIdList = postData.map(id => {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new Error(`Invalid ID format: ${id}`);
+      }
+      return new mongoose.Types.ObjectId(id);
+    });
+
+    let where = {
+      userId: user._id,
+      _id: { $in: postData }
+    };
+
+    let data = await socialAccountModel.find(where)
+    console.log('data', data);
+
+    sendResponse(res, 200, "", data)
+  }
+  catch (err) {
+    console.log(err);
+
+    sendResponse(res, 500, "Something went wrong.", err);
   }
 }
 

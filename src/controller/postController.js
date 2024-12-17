@@ -8,6 +8,77 @@ const scheduleController = {}
 const mongoose = require('mongoose');
 const comman = require("../helper/comman");
 
+const TimeDiffrence = (offset1, offset2) => {
+  const diff = offset1 - offset2;
+  const min = diff * 60
+  return min;
+}
+
+scheduleController.getCalenderPost = async (req, res) => {
+  try {
+    let { page, limit, keys, startDate, endDate } = req?.query || {};
+    let user = req.user
+    let valid = validateData(req?.query ?? {}, {
+      page: {
+        type: "string"
+      },
+      limit: {
+        type: "string"
+      },
+    })
+
+    if (Object.keys(valid).length != 0) {
+      sendResponse(res, 400, valid)
+      return
+    }
+    let where = { userId: user._id }
+    if (keys) {
+      where.name = { $regex: keys, $options: "i" }
+    }
+
+    if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
+      where.postDate = {
+        $gte: new Date(startDate),
+        $lt: new Date(endDate)
+      };
+    }
+    //  let cond=[
+    //   {$match : where},
+    //   {
+
+    //       $lookup: {
+    //              from: "social_accounts",
+    //              localField: "accounts",
+    //              foreignField: "_id",
+    //              as: "data"
+    //            }
+    //   }]
+    //   if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+    //     cond.push({$skip : ((page*limit)-limit)})
+    //     cond.push({ $limit : parseInt(limit) })
+    // }
+
+    console.log({ where })
+    let result = await selectData({
+      collection: postModel,
+      where: where
+    })
+    let count = await countData({
+      collection: postModel,
+      where,
+    })
+    let data = {
+      data: result,
+      count: count
+    }
+    console.log({ data })
+    sendResponse(res, 200, "", data)
+  } catch (e) {
+    console.log({ e })
+    sendResponse(res, 500, "Something went wrong.");
+  }
+
+}
 
 scheduleController.getPost = async (req, res) => {
   try {
