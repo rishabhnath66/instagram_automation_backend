@@ -117,6 +117,7 @@ module.exports = {
       500: "Internal Server Error",
     };
     let tstatus = [200, 201]
+    console.log(msg)
     const message = msg || messagelist[code];
     return res.status(code).json({
       status: tstatus.includes(code),

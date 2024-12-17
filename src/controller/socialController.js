@@ -149,10 +149,9 @@ socialController.deleteAccount = async (req, res) => {
 
 socialController.getInstragramAccountList = async (req, res) => {
   try {
-    let { page, limit, keys } = req?.query || {};
-
+    let { page, limit, keys, sort = "" } = req?.query || {};
     let user = req.user
-    // console.log({ user })
+    console.log({ user })
     let valid = validateData(req?.query ?? {}, {
       page: {
         type: "string"
@@ -178,12 +177,14 @@ socialController.getInstragramAccountList = async (req, res) => {
     if (keys) {
       where["data.username"] = { $regex: keys, $options: "i" }
     }
-    // console.log({ where })
+
+    console.log({ sort })
     let result = await selectData({
       collection: socialAccountModel,
       where,
       limit: limit,
       page: page,
+      sort,
     })
     let count = await countData({
       collection: socialAccountModel,
@@ -200,35 +201,6 @@ socialController.getInstragramAccountList = async (req, res) => {
   }
 }
 
-
-socialController.getSelectedAccounts = async (req, res) => {
-  try {
-    let user = req.user
-    let postData = req.body.accounts
-
-    let objectIdList = postData.map(id => {
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new Error(`Invalid ID format: ${id}`);
-      }
-      return new mongoose.Types.ObjectId(id);
-    });
-
-    let where = {
-      userId: user._id,
-      _id: { $in: postData }
-    };
-
-    let data = await socialAccountModel.find(where)
-    console.log('data', data);
-
-    sendResponse(res, 200, "", data)
-  }
-  catch (err) {
-    console.log(err);
-
-    sendResponse(res, 500, "Something went wrong.", err);
-  }
-}
 
 socialController.getUserConnectedInstragramAccounts = async (req, res) => {
   try {

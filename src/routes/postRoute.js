@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const postController = require("../controller/postController");
 const middlewareModule = require('../middleware/middleware');
-const openaiController = require('../controller/openaiController')
-
+const openaiController = require('../controller/openaiController');
 let requests = {
   get: {
     "/getPost": postController.getPost,
+    "/getCalenderPost": postController.getCalenderPost,
     "/multipost": postController.multipost,
   },
   post: {

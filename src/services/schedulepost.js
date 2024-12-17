@@ -48,7 +48,7 @@ let funObj = {
                     [type]: [error]
                 };
                 let updData = { errorData };
-                updData.status = "fail"
+                updData.status = "Failed"
 
                 if (id) {
                     updateData({
