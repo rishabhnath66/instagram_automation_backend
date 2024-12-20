@@ -85,8 +85,7 @@ module.exports = {
     Object.keys(validateFields).forEach((field) => {
       const fieldValue = input?.[field];
       let type = validateFields?.[field]?.type;
-      
-      if (!input.hasOwnProperty(field)) {
+      if (input && !input.hasOwnProperty(field)) {
         message[field] = field + ` is Require.`;
       } else if (typeof fieldValue != type && type != "array") {
         message[field] = field + ` type Should be ${type}.`;
@@ -116,12 +115,12 @@ module.exports = {
       404: "Not Found",
       500: "Internal Server Error",
     };
-    let tstatus=[200,201]
+    let tstatus = [200, 201]
     console.log(msg)
     const message = msg || messagelist[code];
     return res.status(code).json({
       status: tstatus.includes(code),
-      message: message, 
+      message: message,
       data,
     });
   },

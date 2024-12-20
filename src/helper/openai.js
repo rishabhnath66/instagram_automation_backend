@@ -1,13 +1,14 @@
 const OpenAI = require("openai")
+const fs = require('fs')
+const sharp = require('sharp')
+
 
 const OPEN_AI = {};
 
 let openai
-OPEN_AI.connectapikey = () => {
-    openai = new OpenAI({
-        apiKey: process.env.OPENAI_KEY
-    });
-}
+openai = new OpenAI({
+    apiKey: process.env.OPENAI_KEY
+});
 
 OPEN_AI.generatePostVariation = async (data) => {
 
@@ -70,48 +71,75 @@ OPEN_AI.generatePostVariation = async (data) => {
     })
 }
 
-OPEN_AI.generateImageUsingPrompt = async (type, prompt, image) => {
+OPEN_AI.generateImageUsingPrompt = async (type, prompt, file, name) => {
     try {
         let response
-        if (type !== 'image') {
-            response = await openai.images.generate({
-                model: "dall-e-3",
-                prompt: prompt,
-                n: 1,
-                size: "1024x1024",
-            });
+
+        const resizedImagePath = "public/images/resized-" + name;
+        try {
+            await sharp(file)
+                .resize({ width: 1024, height: 1024 })
+                .toFormat('png')
+                .ensureAlpha()
+                .toFile(resizedImagePath);
+
+            // console.log('Image resized successfully:', resizedImagePath);
+        } catch (error) {
+            console.error('Error resizing image:', error);
+            return;
         }
-        else {
-            let imagePath = "public/uploads/image/" + image.filename
-            const resizedImagePath = "public/uploads/image/resized-" + image.filename;
-            try {
-                await sharp(imagePath)
-                    .resize({ width: 1024, height: 1024 })
-                    .toFormat('png')
-                    .ensureAlpha()
-                    .toFile(resizedImagePath);
 
-                // console.log('Image resized successfully:', resizedImagePath);
-            } catch (error) {
-                console.error('Error resizing image:', error);
-                return;
-            }
+        const resizedImageBuffer = fs.createReadStream(resizedImagePath);
 
-            const resizedImageBuffer = fs.createReadStream(resizedImagePath);
+        response = await openai.images.edit({
+            // model: "dall-e-3",
+            image: resizedImageBuffer,
+            prompt: prompt,
+            n: 1,
+            size: "1024x1024"
+        });
 
-            response = await openai.images.createVariation({
-                model: "dall-e-2",
-                image: resizedImageBuffer,
-                n: 1,
-                size: "1024x1024"
-            });
-            try {
-                fs.unlinkSync(imagePath);
-                fs.unlinkSync(resizedImagePath);
-            } catch (err) {
-                console.log('err', err);
-            }
-        }
+        // if (type !== 'image') {
+        //     response = await openai.images.generate({
+        //         model: "dall-e-3",
+        //         prompt: prompt,
+        //         n: 1,
+        //         size: "1024x1024",
+        //     });
+        // }
+        // else {
+        //     const resizedImagePath = "public/images/resized-" + name;
+        //     try {
+        //         await sharp(file)
+        //             .resize({ width: 1024, height: 1024 })
+        //             .toFormat('png')
+        //             .ensureAlpha()
+        //             .toFile(resizedImagePath);
+
+        //         // console.log('Image resized successfully:', resizedImagePath);
+        //     } catch (error) {
+        //         console.error('Error resizing image:', error);
+        //         return;
+        //     }
+
+        //     const resizedImageBuffer = fs.createReadStream(resizedImagePath);
+
+        //     response = await openai.images.createVariation({
+        //         model: "dall-e-2",
+        //         image: resizedImageBuffer,
+        //         n: 1,
+        //         size: "1024x1024"
+        //     });
+        //     try {
+        //         fs.unlinkSync(file);
+        //         fs.unlinkSync(resizedImagePath);
+        //     } catch (err) {
+        //         console.log('err', err);
+        //     }
+        // }
+
+        fs.unlinkSync(file);
+        fs.unlinkSync(resizedImagePath);
         let image_url = response.data[0].url;
         return image_url
     } catch (error) {
@@ -130,7 +158,7 @@ word length : ${data.approxWords}
 tone - ${data.toneofVoice}
 ${data.generateHashtags ? 'Generate Hashtags' : ''}
 
-Generate a variation of my content while maintaining the same word length and appropriate tone.`
+Generate a variation of my content while maintaining the same word length and appropriate tone. Output will be only generated variation. Make sure to not add any other content.`
 
 
         const completion = await openai.chat.completions.create({
