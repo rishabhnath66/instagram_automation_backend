@@ -3,7 +3,8 @@ const { insertData, selectData, updateData, countData, deleteData } = require(".
 const { encrypt, generateStrongPassword, comparePassword, manageJwtToken, validateData, sendResponse, } = require("../helper/comman");
 const socialAccountModel = require("../model/socialAccountModel");
 const socialController = {}
-const TimeZone = require("../data/timeZone")
+const TimeZone = require("../data/timeZone");
+const { default: mongoose } = require("mongoose");
 
 
 socialController.addAccount = async (req, res) => {

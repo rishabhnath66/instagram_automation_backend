@@ -9,7 +9,9 @@ const mongoose = require('mongoose');
 const comman = require("../helper/comman");
 const multer = require("multer");
 const upload = multer().any()
-const OpenAI = require('../helper/openai')
+const OpenAI = require('../helper/openai');
+const path = require("path");
+const fs = require('fs')
 
 openaiController.generateVariation = async (req, res) => {
     try {
@@ -42,9 +44,11 @@ openaiController.generateTextUsingOpenAI = async (req, res) => {
     try {
         let postData = req.body
         console.log('postd', postData);
-        return
+
 
         let result = await OpenAI.generateDataUsingOpenAI(postData);
+        console.log('result', result);
+
         sendResponse(res, 201, "Text generated successfully.", result)
     }
     catch (error) {
@@ -55,17 +59,47 @@ openaiController.generateTextUsingOpenAI = async (req, res) => {
 
 openaiController.generateImageUsingPrompt = async (req, res) => {
     try {
-        let postData = req.body
-        let generated
-        if (postData.type === 'image') {
-            if (req.file) {
-                generated = await OpenAI.generateImageUsingPrompt(postData.type, postData.prompt, req.file)
+        upload(req, res, async (err) => {
+            if (err instanceof multer.MulterError) {
+                sendResponse(res, 500, "Something went wrong.", err);
+            } else if (err) {
+                sendResponse(res, 500, "Something went wrong.", err);
+            } else {
+                let postData = req.body
+                console.log('postda', req.body, '\n', req.files);
+
+
+                let file = req.files[0]
+
+                let tempFilePath = path.join('public/images/', file.originalname);
+
+                fs.mkdir(path.dirname(tempFilePath), { recursive: true }, (err) => {
+                    if (err) {
+                        console.error('Error creating directory:', err);
+                        return;
+                    }
+
+                    fs.writeFile(tempFilePath, file.buffer, async (err) => {
+                        if (err) {
+                            console.error('Error writing file:', err);
+                            return;
+                        }
+                        let generated
+                        if (postData.type === 'image') {
+                            if (req.file) {
+                                generated = await OpenAI.generateImageUsingPrompt(postData.type, postData.prompt, tempFilePath)
+                            }
+                        }
+                        else {
+                            generated = await OpenAI.generateImageUsingPrompt(postData.type, postData.prompt, tempFilePath, file.originalname)
+                        }
+                        sendResponse(res, 201, "Image generated successfully.", generated)
+                    })
+                });
+
+
             }
-        }
-        else {
-            generated = await OpenAI.generateImageUsingPrompt(postData.type, postData.prompt,)
-        }
-        sendResponse(res, 201, "Text generated successfully.", generated)
+        })
     }
     catch (error) {
         console.log({ error })
