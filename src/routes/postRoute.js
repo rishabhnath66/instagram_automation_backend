@@ -19,7 +19,7 @@ let requests = {
     "/generateImage": openaiController.generateImageUsingPrompt
   },
   delete: {
-
+    '/deletePost': postController.deletePost,
   },
 
 }

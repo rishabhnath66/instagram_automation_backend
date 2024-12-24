@@ -1,4 +1,4 @@
-const { S3Client, CopyObjectCommand, DeleteObjectCommand} =require("@aws-sdk/client-s3");
+const { S3Client, CopyObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const fs = require('node:fs/promises');
 const { Upload } = require("@aws-sdk/lib-storage");
 const config = {
@@ -17,44 +17,44 @@ let defaultOptions = {
   Bucket: process.env.bucketName
 };
 
-AWSHelper.multiuploadS3=async()=>{
+AWSHelper.multiuploadS3 = async () => {
 
 }
 
 AWSHelper.uploadS3 = (file, remotePath, options = {}) => {
-  return new Promise(async(resolve, reject) => {
-    try{
-    let uploadParams = {
-      ...defaultOptions,
-      ...options,
-    };
+  return new Promise(async (resolve, reject) => {
+    try {
+      let uploadParams = {
+        ...defaultOptions,
+        ...options,
+      };
 
-    uploadParams.Key = remotePath;
-    uploadParams.Body = file.buffer
+      uploadParams.Key = remotePath;
+      uploadParams.Body = file?.buffer ? file.buffer : file
 
- 
-        const parallelUploads3 = new Upload({
-          client: client,
-          params: uploadParams,
-        });
 
-        parallelUploads3.on("httpUploadProgress", (progress) => {
-          // console.log(progress)
-        });
+      const parallelUploads3 = new Upload({
+        client: client,
+        params: uploadParams,
+      });
 
-        const data = await parallelUploads3.done();
-        if(data?.ETag) {
-          // ETag Key Location
-          let { ETag, Key, Location } = data;
-          resolve({ ETag, Key, Location });
-        } else {
-          reject(data);
-        }
-      
-      }catch(e){
-        reject(e);
+      parallelUploads3.on("httpUploadProgress", (progress) => {
+        // console.log(progress)
+      });
+
+      const data = await parallelUploads3.done();
+      if (data?.ETag) {
+        // ETag Key Location
+        let { ETag, Key, Location } = data;
+        resolve({ ETag, Key, Location });
+      } else {
+        reject(data);
       }
-   
+
+    } catch (e) {
+      reject(e);
+    }
+
   });
 };
 
@@ -105,4 +105,4 @@ AWSHelper.deleteObjects = (remotePaths = []) => {
 
 
 
-module.exports=AWSHelper
+module.exports = AWSHelper
