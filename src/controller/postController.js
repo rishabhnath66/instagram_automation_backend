@@ -40,29 +40,25 @@ scheduleController.getCalenderPost = async (req, res) => {
         $lt: new Date(endDate)
       };
     }
-    let cond = [
-      { $match: where },
-      {
+    //  let cond=[
+    //   {$match : where},
+    //   {
 
-        $lookup: {
-          from: "social_accounts",
-          localField: "accounts",
-          foreignField: "_id",
-          as: "data"
-        }
-      }]
-    if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
-      cond.push({ $skip: ((page * limit) - limit) })
-      cond.push({ $limit: parseInt(limit) })
-    }
+    //       $lookup: {
+    //              from: "social_accounts",
+    //              localField: "accounts",
+    //              foreignField: "_id",
+    //              as: "data"
+    //            }
+    //   }]
+    //   if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+    //     cond.push({$skip : ((page*limit)-limit)})
+    //     cond.push({ $limit : parseInt(limit) })
+    // }
 
-    // let result = await selectData({
-    //   collection: postModel,
-    //   where: where,
-    // })
-    let result = await aggregateData({
-      collection: schedulePostModel,
-      aggregateCnd: cond
+    let result = await selectData({
+      collection: postModel,
+      where: where
     })
     let count = await countData({
       collection: postModel,
@@ -471,90 +467,106 @@ scheduleController.createPost = async (req, res) => {
 
 scheduleController.multiCreatePost = async (req, res) => {
   try {
-    let { postList, scheduleDate, timeZone, type } = req.body;
+    let { caption, mediaUrl = [], scheduleDate, accounts, timeZone, type, postDate, offset } = req.body;
 
+    let valid = validateData(req?.body ?? {}, {
+      caption: {
+        type: "string"
+      },
+      mediaUrl: {
+        type: "array"
+      },
+      scheduleDate: {
+        type: "string"
+      },
+      accounts: {
+        type: "array"
+      },
+      offset: {
+        type: "number"
+      },
+      type: {
+        type: "string"
+      },
+    })
     let userTimer = {}
+    if (Object.keys(valid).length != 0) {
+      sendResponse(res, 400, valid)
+      return
+    }
     let userId = req.user._id
 
-    for (let i = 0; i < postList.length; i++) {
-      let { text, image = [], accId } = postList[i];
 
-      let caption, mediaUrl = [], accounts = []
-      caption = text
-      mediaUrl = [{ mediaType: 'image', mediaUrl: image }]
-      accounts.push(accId)
-      console.log('accounts', accounts);
+    let userlist = await selectData({
+      collection: socialAccountModel,
+      where: {
+        _id: { $in: accounts }
+      }
+    })
+    let sd = new Date(scheduleDate)
+    let cd = new Date()
+    if (type != "postnow") {
+      for (let user of userlist) {
 
-      let userlist = await selectData({
-        collection: socialAccountModel,
-        where: {
-          _id: { $in: accounts }
+        let timezoneOffset = (new Date().getTimezoneOffset() / 60) * -1
+        let dif = TimeDiffrence(timezoneOffset, user.TimeZone.offset)
+        let date = new Date(scheduleDate)
+        if (user.TimeZone.offset > timezoneOffset) {
+          date.setMinutes(date.getMinutes() + dif)
+        } else {
+          date.setMinutes(date.getMinutes() - dif)
         }
-      })
-      let sd = new Date(scheduleDate)
-      let cd = new Date()
-      if (type != "postnow") {
-        for (let user of userlist) {
 
-          let timezoneOffset = (new Date().getTimezoneOffset() / 60) * -1
-          let dif = TimeDiffrence(timezoneOffset, user.TimeZone.offset)
-          let date = new Date(scheduleDate)
-          if (user.TimeZone.offset > timezoneOffset) {
-            date.setMinutes(date.getMinutes() + dif)
-          } else {
-            date.setMinutes(date.getMinutes() - dif)
-          }
-
-          if (cd.getTime() > date.getTime()) {
-            sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
-            return
-          } else {
-            userTimer[user._id] = date
-          }
+        if (cd.getTime() > date.getTime()) {
+          sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
+          return
+        } else {
+          userTimer[user._id] = date
         }
       }
-
-
-      const dat = new Date();
-      accounts = accounts.map((ele) => new mongoose.Types.ObjectId(ele))
-      let d1 = await insertData({
-        req, res,
-        collection: schedulePostModel,
-        data: {
-          type,
-          userId,
-          caption,
-          mediaUrl,
-          scheduleDate: sd,
-          accounts,
-          timeZone,
-          postDate: sd,
-        }
-      })
-      let arr = []
-
-      accounts.map((ele) => {
-        console.log({ type }, userTimer, userTimer[ele], (type != "postnow" ? new Date(userTimer[ele]) : sd))
-        let obj = {
-          userId,
-          scheduleId: d1._id,
-          accountId: new mongoose.Types.ObjectId(ele),
-          caption,
-          mediaUrl,
-          type,
-          scheduleDate: sd,
-          postDate: (type != "postnow" ? new Date(userTimer[ele]) : sd),
-        }
-
-        arr.push(obj)
-      })
-      let post = await insertData({
-        collection: postModel,
-        data: arr
-      })
     }
 
-    sendResponse(res, 201, "Post Created Successfully.")
+
+    const dat = new Date();
+    accounts = accounts.map((ele) => new mongoose.Types.ObjectId(ele))
+    let d1 = await insertData({
+      req, res,
+      collection: schedulePostModel,
+      data: {
+        type,
+        userId,
+        caption,
+        mediaUrl,
+        scheduleDate: sd,
+        accounts,
+        timeZone,
+        postDate: sd,
+      }
+    })
+    let arr = []
+
+    accounts.map((ele) => {
+      console.log({ type }, userTimer, userTimer[ele], (type != "postnow" ? new Date(userTimer[ele]) : sd))
+      let obj = {
+        userId,
+        scheduleId: d1._id,
+        accountId: new mongoose.Types.ObjectId(ele),
+        caption,
+        mediaUrl,
+        type,
+        scheduleDate: sd,
+        postDate: (type != "postnow" ? new Date(userTimer[ele]) : sd),
+      }
+
+      arr.push(obj)
+    })
+    let post = await insertData({
+      collection: postModel,
+      data: arr
+    })
+    if (post) {
+      sendResponse(res, 201, "Post Created Successfully.")
+    }
 
   } catch (error) {
     console.log({ error })
@@ -648,135 +660,135 @@ scheduleController.updatePost = async (req, res) => {
 }
 
 
-// scheduleController.multiCreatePost = async (req, res) => {
-//   try {
-//     let { postList, scheduleDate, timeZone, type } = req.body;
+scheduleController.multiCreatePost = async (req, res) => {
+  try {
+    let { postList, scheduleDate, timeZone, type } = req.body;
 
-//     console.log('body data ', req.body);
+    console.log('body data ', req.body);
 
-//     let valid = validateData(req?.body ?? {}, {
-//       postList: {
-//         type: "array"
-//       },
-//       scheduleDate: {
-//         type: "string"
-//       },
-//       timeZone: {
-//         type: "object"
-//       },
+    let valid = validateData(req?.body ?? {}, {
+      postList: {
+        type: "array"
+      },
+      scheduleDate: {
+        type: "string"
+      },
+      timeZone: {
+        type: "object"
+      },
 
-//     })
-//     let userId = req.user._id
-//     let userTimer = {}
-//     let postData = []
-//     let sd = new Date(scheduleDate)
+    })
+    let userId = req.user._id
+    let userTimer = {}
+    let postData = []
+    let sd = new Date(scheduleDate)
 
-//     console.log('postList', postList);
+    console.log('postList', postList);
 
-//     for (let i = 0; i < postList.length; i++) {
-//       let { title, text, image = [], accId } = postList[i];
+    for (let i = 0; i < postList.length; i++) {
+      let { title, text, image = [], accId } = postList[i];
 
-//       let caption, mediaUrl = [], accounts = []
-//       caption = text
-//       mediaUrl = [{ mediaType: 'image', mediaUrl: image }]
-//       accounts.push(accId)
-//       console.log('accounts', accounts);
+      let caption, mediaUrl = [], accounts = []
+      caption = text
+      mediaUrl = [{ mediaType: 'image', mediaUrl: image }]
+      accounts.push(accId)
+      console.log('accounts', accounts);
 
-//       let userlist = await selectData({
-//         collection: socialAccountModel,
-//         data: {
-//           _id: { $in: accounts }
-//         }
-//       })
-//       console.log('userlist', userlist);
+      let userlist = await selectData({
+        collection: socialAccountModel,
+        data: {
+          _id: { $in: accounts }
+        }
+      })
+      console.log('userlist', userlist);
 
-//       let cd = new Date()
-//       if (type != "postnow") {
-//         for (let user of userlist) {
-//           let timezoneOffset = (new Date().getTimezoneOffset() / 60) * -1
-//           let dif = TimeDiffrence(timezoneOffset, user.TimeZone.offset)
-//           let date = new Date(scheduleDate)
-//           if (user.TimeZone.offset > timezoneOffset) {
-//             date.setMinutes(date.getMinutes() + dif)
-//           } else {
-//             date.setMinutes(date.getMinutes() - dif)
-//           }
-//           if (cd.getTime() > date.getTime()) {
-//             sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
-//             return
-//           } else {
-//             userTimer[user._id] = date
-//           }
-//         }
-//       }
+      let cd = new Date()
+      if (type != "postnow") {
+        for (let user of userlist) {
+          let timezoneOffset = (new Date().getTimezoneOffset() / 60) * -1
+          let dif = TimeDiffrence(timezoneOffset, user.TimeZone.offset)
+          let date = new Date(scheduleDate)
+          if (user.TimeZone.offset > timezoneOffset) {
+            date.setMinutes(date.getMinutes() + dif)
+          } else {
+            date.setMinutes(date.getMinutes() - dif)
+          }
+          if (cd.getTime() > date.getTime()) {
+            sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
+            return
+          } else {
+            userTimer[user._id] = date
+          }
+        }
+      }
 
-//       let data = {
-//         type,
-//         userId,
-//         caption,
-//         mediaUrl,
-//         scheduleDate: sd,
-//         accounts,
-//         timeZone,
-//         postDate: sd,
-//       }
-//       postData.push(data)
-//     }
-//     for (let i = 0; i < postData.length; i++) {
-//       let {
-//         type,
-//         userId,
-//         caption,
-//         mediaUrl,
-//         scheduleDate,
-//         accounts,
-//         timeZone,
-//         postDate: sd,
-//       } = postData[i]
+      let data = {
+        type,
+        userId,
+        caption,
+        mediaUrl,
+        scheduleDate: sd,
+        accounts,
+        timeZone,
+        postDate: sd,
+      }
+      postData.push(data)
+    }
+    for (let i = 0; i < postData.length; i++) {
+      let {
+        type,
+        userId,
+        caption,
+        mediaUrl,
+        scheduleDate,
+        accounts,
+        timeZone,
+        postDate: sd,
+      } = postData[i]
 
-//       let d1 = await insertData({
-//         req, res,
-//         collection: schedulePostModel,
-//         data: {
-//           type,
-//           userId,
-//           caption,
-//           mediaUrl,
-//           scheduleDate,
-//           accounts,
-//           timeZone,
-//           postDate: sd,
-//         }
-//       })
-//       let arr = []
-//       accounts.map((ele) => {
-//         let obj = {
-//           userId,
-//           scheduleId: d1._id,
-//           accountId: new mongoose.Types.ObjectId(ele),
-//           caption,
-//           mediaUrl,
-//           type,
-//           scheduleDate: sd,
-//           postDate: (type != "postnow" ? new Date(userTimer[ele]) : sd),
-//         }
-//         arr.push(obj)
-//       })
-//       let post = await insertData({
-//         req, res,
-//         collection: postModel,
-//         data: arr
-//       })
+      let d1 = await insertData({
+        req, res,
+        collection: schedulePostModel,
+        data: {
+          type,
+          userId,
+          caption,
+          mediaUrl,
+          scheduleDate,
+          accounts,
+          timeZone,
+          postDate: sd,
+        }
+      })
+      let arr = []
+      accounts.map((ele) => {
+        let obj = {
+          userId,
+          scheduleId: d1._id,
+          accountId: new mongoose.Types.ObjectId(ele),
+          caption,
+          mediaUrl,
+          type,
+          scheduleDate: sd,
+          postDate: (type != "postnow" ? new Date(userTimer[ele]) : sd),
+        }
+        arr.push(obj)
+      })
+      let post = await insertData({
+        req, res,
+        collection: postModel,
+        data: arr
+      })
 
-//     }
-//     sendResponse(res, 201, "Posts Created Successfully.")
+    }
+    sendResponse(res, 201, "Posts Created Successfully.")
 
-//   } catch (error) {
-//     console.log({ error })
-//     sendResponse(res, 500, "Someting went wrong", error)
-//   }
+  } catch (error) {
+    console.log({ error })
+    sendResponse(res, 500, "Someting went wrong", error)
+  }
 
-// }
+}
 
 scheduleController.deletePost = async (req, res) => {
   try {
