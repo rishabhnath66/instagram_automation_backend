@@ -195,8 +195,8 @@ async function downloadImage(imageUrl, outputPath) {
 
                 const imageBuffer = Buffer.from(response.data);
                 const resizedImageBuffer = await sharp(imageBuffer)
+                    .resize({ width: 1024, height: 1024 })
                     .toFormat('png')
-                    .resize(305, 305)
                     .ensureAlpha()
                     .toBuffer();
                 if (resizedImageBuffer) {

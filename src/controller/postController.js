@@ -665,6 +665,55 @@ scheduleController.updatePost = async (req, res) => {
 }
 
 
+scheduleController.updatePostData = async (req, res) => {
+  try {
+    let { title, caption, mediaUrl = [], scheduleDate, accounts, timeZone, postDate, target } = req.body;
+
+    // let userId=req.user._id
+
+    const d = new Date();
+    let sd = postDate ? new Date(postDate) : new Date();
+    if (new Date() > sd) {
+      sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
+      return
+    }
+    if (target) {
+      let d1 = await selectData({
+        collection: postModel,
+        where: { _id: target }
+      })
+      if (d1) {
+        let data = {}
+        if (caption) { data.caption = caption }
+        if (mediaUrl.length > 0) { data.mediaUrl = mediaUrl }
+
+        console.log('data', data);
+
+        let update = await updateData({
+          collection: postModel,
+          where: { _id: target },
+          data: data
+        })
+        if (update) {
+          sendResponse(res, 200, "Post updated Sucessfully.", update);
+          return
+        }
+      }
+    } else {
+      sendResponse(res, 204, "Post Not Found");
+      return
+    }
+
+
+
+  } catch (error) {
+    console.log({ error })
+    sendResponse(res, 500, "Someting went wrong", error)
+  }
+
+}
+
+
 scheduleController.multiCreatePost = async (req, res) => {
   try {
     let { postList, scheduleDate, timeZone, type } = req.body;
@@ -797,25 +846,31 @@ scheduleController.multiCreatePost = async (req, res) => {
 
 scheduleController.deletePost = async (req, res) => {
   try {
-    let { target } = req?.body || {};
+    let { target, scheduleId } = req?.body || {};
     let user = req.user
-    let valid = validateData(req?.body ?? {}, {
-      target: {
-        type: "string"
+
+    console.log(target, scheduleId)
+    let where = {}
+    if (target) {
+      where = {
+        _id: target, userId: user._id
       }
-    })
-    console.log({ target })
-    if (Object.keys(valid).length != 0) {
-      sendResponse(res, 400, valid)
-      return
     }
+    if (scheduleId) {
+      where = { scheduleId: scheduleId, userId: user._id }
+    }
+
     let result = await deleteData({
       collection: postModel,
       limit: 1,
-      where: {
-        _id: target, userId: user._id
-      },
+      where: where
     })
+    if (scheduleId) {
+      let sss = await deleteData({
+        collection: schedulePostModel,
+        where: { _id: scheduleId, userId: user._id }
+      })
+    }
     if (result?.deletedCount == 0) {
       sendResponse(res, 400, "This post not exits.")
     } else {

@@ -50,11 +50,6 @@ OPEN_AI.generatePostVariation = async (data) => {
                 //     size: "1024x1024"
                 // });
 
-                // const resizedImageBuffer = await sharp(data.image)
-                //     .resize(1024, 1024)
-                //     .toFormat('png')
-                //     .toBuffer();
-
                 let img = await openai.images.edit({
                     // model: "dall-e-3",
                     image: resizedImageBuffer,
@@ -107,51 +102,18 @@ OPEN_AI.generateImageUsingPrompt = async (type, prompt, file) => {
         const resizedImageBuffer = fs.createReadStream(resizedImagePath);
 
         response = await openai.images.edit({
-            // model: "dall-e-3",
+            // model: "dall-e-2",
             image: resizedImageBuffer,
             prompt: prompt,
             n: 1,
             size: "1024x1024"
         });
-
-        // if (type !== 'image') {
-        //     response = await openai.images.generate({
-        //         model: "dall-e-3",
-        //         prompt: prompt,
-        //         n: 1,
-        //         size: "1024x1024",
-        //     });
-        // }
-        // else {
-        //     const resizedImagePath = "public/images/resized-" + name;
-        //     try {
-        //         await sharp(file)
-        //             .resize({ width: 1024, height: 1024 })
-        //             .toFormat('png')
-        //             .ensureAlpha()
-        //             .toFile(resizedImagePath);
-
-        //         // console.log('Image resized successfully:', resizedImagePath);
-        //     } catch (error) {
-        //         console.error('Error resizing image:', error);
-        //         return;
-        //     }
-
-        //     const resizedImageBuffer = fs.createReadStream(resizedImagePath);
-
-        //     response = await openai.images.createVariation({
-        //         model: "dall-e-2",
-        //         image: resizedImageBuffer,
-        //         n: 1,
-        //         size: "1024x1024"
-        //     });
-        //     try {
-        //         fs.unlinkSync(file);
-        //         fs.unlinkSync(resizedImagePath);
-        //     } catch (err) {
-        //         console.log('err', err);
-        //     }
-        // }
+        // response = await openai.images.createVariation({
+        //     model: "dall-e-2",
+        //     image: resizedImageBuffer,
+        //     n: 1,
+        //     size: "1024x1024"
+        // });
 
         fs.unlinkSync(file);
         fs.unlinkSync(resizedImagePath);
