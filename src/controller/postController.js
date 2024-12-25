@@ -124,6 +124,11 @@ scheduleController.getPost = async (req, res) => {
         }
       },
       {
+        $match: {
+          "postdata.0": { $exists: true }
+        }
+      },
+      {
         $project: {
           scheduleDate: -1,
           caption: -1,
