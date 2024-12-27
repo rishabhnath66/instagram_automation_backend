@@ -27,7 +27,7 @@ openaiController.generateVariation = async (req, res) => {
                 let postData = req.body;
                 let user = req.user
                 let acc = postData.accounts
-                console.log('postd', postData);
+                // console.log('postd', postData);
 
                 // if (req.files) {
                 //     let file = req.files[0]
@@ -85,11 +85,11 @@ openaiController.generateVariation = async (req, res) => {
                             let name = "File_" + Date.now() + '.png'
                             let remotepath = `instragram/user/${user._id}/` + name
                             let f1 = await AWSHelper.uploadS3(img, remotepath, {})
-                            console.log('f1', f1);
+                            // console.log('f1', f1);
+                            fs.unlinkSync(newpath)
 
-                            result.image = f1.key
+                            result.image = f1.Key ? f1.Key : f1.key
                         }
-
                         newarr.push(result);
                     }).catch(err => {
                         console.log('err', err);
@@ -98,7 +98,6 @@ openaiController.generateVariation = async (req, res) => {
                         msg = err
                     })
                 }
-                // fs.unlinkSync(output)
                 if (error) {
                     sendResponse(res, 500, "Someting went wrong", msg)
                 }
@@ -122,13 +121,18 @@ openaiController.generateTextUsingOpenAI = async (req, res) => {
 
 
         let result = await OpenAI.generateDataUsingOpenAI(postData);
-        console.log('result', result);
+        if (result) {
+            console.log('result', result);
 
-        sendResponse(res, 201, "Text generated successfully.", result)
+            sendResponse(res, 201, "Text generated successfully.", result)
+        }
+        else {
+            sendResponse(res, 500, "Failed to genearte text.", error)
+        }
     }
     catch (error) {
         console.log({ error })
-        sendResponse(res, 500, "Someting went wrong", error)
+        sendResponse(res, 500, "Failed to genearte text.", error)
     }
 }
 
@@ -145,7 +149,8 @@ openaiController.generateImageUsingPrompt = async (req, res) => {
 
 
                 let file = req.files[0]
-
+                let image
+                let user = req.user
                 let tempFilePath = path.join('public/images/', `${Date.now()}.png`);
 
                 fs.mkdir(path.dirname(tempFilePath), { recursive: true }, (err) => {
@@ -168,7 +173,23 @@ openaiController.generateImageUsingPrompt = async (req, res) => {
                         else {
                             generated = await OpenAI.generateImageUsingPrompt(postData.type, postData.prompt, tempFilePath, file.originalname)
                         }
-                        sendResponse(res, 201, "Image generated successfully.", generated)
+                        if (generated) {
+                            let newpath = `public/images/${Date.now()}.png`
+                            await downloadImage(generated, newpath)
+                            let img = fs.createReadStream(newpath);
+                            let name = "File_" + Date.now() + '.png'
+                            let remotepath = `instragram/user/${user._id}/` + name
+                            let f1 = await AWSHelper.uploadS3(img, remotepath, {})
+                            // console.log('f1', f1);
+                            fs.unlinkSync(newpath)
+
+                            image = f1.Key ? f1.Key : f1.key
+                        }
+                        else {
+                            sendResponse(res, 500, "Failed to generate image.")
+                        }
+
+                        sendResponse(res, 201, "Image generated successfully.", image)
                     })
                 });
 
@@ -178,7 +199,7 @@ openaiController.generateImageUsingPrompt = async (req, res) => {
     }
     catch (error) {
         console.log({ error })
-        sendResponse(res, 500, "Someting went wrong", error)
+        sendResponse(res, 500, "Failed to generate image.", error.message)
     }
 }
 

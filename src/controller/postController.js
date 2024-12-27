@@ -40,26 +40,30 @@ scheduleController.getCalenderPost = async (req, res) => {
         $lt: new Date(endDate)
       };
     }
-    //  let cond=[
-    //   {$match : where},
-    //   {
+    let cond = [
+      { $match: where },
+      {
 
-    //       $lookup: {
-    //              from: "social_accounts",
-    //              localField: "accounts",
-    //              foreignField: "_id",
-    //              as: "data"
-    //            }
-    //   }]
-    //   if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
-    //     cond.push({$skip : ((page*limit)-limit)})
-    //     cond.push({ $limit : parseInt(limit) })
-    // }
+        $lookup: {
+          from: "social_accounts",
+          localField: "accountId",
+          foreignField: "_id",
+          as: "data"
+        }
+      }]
+    if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
+      cond.push({ $skip: ((page * limit) - limit) })
+      cond.push({ $limit: parseInt(limit) })
+    }
 
-    let result = await selectData({
+    let result = await aggregateData({
       collection: postModel,
-      where: where
+      aggregateCnd: cond
     })
+    // let result = await selectData({
+    //   collection: postModel,
+    //   where: where
+    // })
     let count = await countData({
       collection: postModel,
       where,
@@ -667,7 +671,7 @@ scheduleController.updatePost = async (req, res) => {
 
 scheduleController.updatePostData = async (req, res) => {
   try {
-    let { title, caption, mediaUrl = [], scheduleDate, accounts, timeZone, postDate, target } = req.body;
+    let { title, scheduleId, caption, mediaUrl = [], scheduleDate, accounts, timeZone, postDate, target } = req.body;
 
     // let userId=req.user._id
 
@@ -677,6 +681,7 @@ scheduleController.updatePostData = async (req, res) => {
       sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
       return
     }
+    let id
     if (target) {
       let d1 = await selectData({
         collection: postModel,
@@ -686,12 +691,36 @@ scheduleController.updatePostData = async (req, res) => {
         let data = {}
         if (caption) { data.caption = caption }
         if (mediaUrl.length > 0) { data.mediaUrl = mediaUrl }
+        if (scheduleDate) { data.scheduleDate = new Date(scheduleDate) }
 
         console.log('data', data);
 
         let update = await updateData({
           collection: postModel,
           where: { _id: target },
+          data: data
+        })
+        if (update) {
+          sendResponse(res, 200, "Post updated Sucessfully.", update);
+          return
+        }
+      }
+    }
+    else if (scheduleId) {
+      let d1 = await selectData({
+        collection: schedulePostModel,
+        where: { _id: scheduleId }
+      })
+      if (d1) {
+        let data = {}
+        if (caption) { data.caption = caption }
+        if (mediaUrl.length > 0) { data.mediaUrl = mediaUrl }
+
+        console.log('data', data);
+
+        let update = await updateData({
+          collection: schedulePostModel,
+          where: { _id: scheduleId },
           data: data
         })
         if (update) {
@@ -851,22 +880,39 @@ scheduleController.deletePost = async (req, res) => {
 
     console.log(target, scheduleId)
     let where = {}
+    let result
     if (target) {
       where = {
         _id: target, userId: user._id
       }
+      let selecteddata = await selectData({
+        collection: postModel,
+        where: where
+      })
+      if (selecteddata) {
+        let sp = await selectData({
+          collection: schedulePostModel,
+          where: { _id: selecteddata[0].scheduleId, userId: user._id }
+        })
+        let dacc = sp[0].accounts.filter(item => !item.equals(selecteddata[0].accountId));
+        let update = await updateData({
+          collection: schedulePostModel,
+          where: { _id: sp[0]._id },
+          data: {
+            accounts: dacc,
+          }
+        })
+      }
+
+      result = await deleteData({
+        collection: postModel,
+        limit: 1,
+        where: where
+      })
     }
     if (scheduleId) {
       where = { scheduleId: scheduleId, userId: user._id }
-    }
-
-    let result = await deleteData({
-      collection: postModel,
-      limit: 1,
-      where: where
-    })
-    if (scheduleId) {
-      let sss = await deleteData({
+      result = await deleteData({
         collection: schedulePostModel,
         where: { _id: scheduleId, userId: user._id }
       })
