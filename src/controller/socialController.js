@@ -29,9 +29,7 @@ socialController.addAccount = async (req, res) => {
         where,
         req, res
       });
-      console.log({ userdata })
       let t1 = TimeZone.find((s1) => s1.offset == userdata.timeZone)
-      console.log({ t1 })
       if (userdata.target) {
         if (useraccount) {
           let updateAcc = await updateData({
@@ -79,7 +77,6 @@ socialController.updateAccount = async (req, res) => {
   try {
     let { target, TimeZone } = req?.body || {};
     let user = req.user
-    console.log({ TimeZone }, req?.body)
     let valid = validateData(req?.body ?? {}, {
       target: {
         type: "string"
@@ -122,7 +119,6 @@ socialController.deleteAccount = async (req, res) => {
         type: "string"
       }
     })
-    console.log({ target })
     if (Object.keys(valid).length != 0) {
       sendResponse(res, 400, valid)
       return
@@ -151,7 +147,6 @@ socialController.getInstragramAccountList = async (req, res) => {
   try {
     let { page, limit, keys, sort = "" } = req?.query || {};
     let user = req.user
-    console.log({ user })
     let valid = validateData(req?.query ?? {}, {
       page: {
         type: "string"
@@ -178,7 +173,6 @@ socialController.getInstragramAccountList = async (req, res) => {
       where["data.username"] = { $regex: keys, $options: "i" }
     }
 
-    console.log({ sort })
     let result = await selectData({
       collection: socialAccountModel,
       where,
@@ -219,8 +213,6 @@ socialController.getSelectedAccounts = async (req, res) => {
     };
 
     let data = await socialAccountModel.find(where)
-    console.log('data', data);
-
     sendResponse(res, 200, "", data)
   }
   catch (err) {
@@ -245,7 +237,6 @@ socialController.getUserConnectedInstragramAccounts = async (req, res) => {
       sendResponse(res, 400, valid)
       return
     }
-    console.log({ ids })
     let result = await selectData({
       collection: socialAccountModel,
       where: { _id: { $in: ids } },
@@ -267,7 +258,6 @@ socialController.getUserConnectedInstragramAccounts = async (req, res) => {
 }
 socialController.authLink = async (req, res) => {
   try {
-    console.log({ TimeZone })
     let user = req.user
     const redirectUri = `https://localhost:3001/auth/addSocialAccount`
     const clientId = "3874145586148497";
@@ -303,7 +293,6 @@ const instragramAccAdd = async (code, redirect_uri) => {
       };
 
       let data1 = await axios.request(config)
-      console.log(data1)
       data1 = data1.data
       let details = await axios.get(`https://graph.instagram.com/me?fields=id,username,name,account_type,profile_picture_url,followers_count,follows_count,media_count&access_token=${data1.access_token}`)
       let longtoken = await axios.get(`https://graph.instagram.com/access_token/?grant_type=ig_exchange_token&client_secret=63bd7ccb9064cb48221acd67664983dc&access_token=${data1.access_token}`)
@@ -311,7 +300,6 @@ const instragramAccAdd = async (code, redirect_uri) => {
         ...details.data,
         ...longtoken.data,
       }
-      console.log({ dat })
       resolve({ status: true, data: dat });
     }
     catch (e) {
