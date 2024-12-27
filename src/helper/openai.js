@@ -26,7 +26,10 @@ OPEN_AI.generatePostVariation = async (data) => {
                     messages: [{ role: "system", content: `You are an expert in analyzing and generating variation of given content.Generate a relevant variation that align with the context and purpose.` },
                     { role: 'user', content: txt }
                     ],
-                });
+                }).catch(err => {
+                    reject('Failed to generate text. Try again!')
+                })
+
                 if (completion) {
                     response.text = completion.choices[0].message.content
                 }
