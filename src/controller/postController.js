@@ -29,10 +29,12 @@ scheduleController.getCalenderPost = async (req, res) => {
       sendResponse(res, 400, valid)
       return
     }
-    let where = { userId: user._id }
+    let where = { userId: user._id, isDeleted: { $ne: true } }
     if (keys) {
       where.name = { $regex: keys, $options: "i" }
     }
+
+
 
     if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
       where.postDate = {
@@ -50,12 +52,14 @@ scheduleController.getCalenderPost = async (req, res) => {
           foreignField: "_id",
           as: "data"
         }
+
+
       }]
+    cond.push({ $sort: { _id: -1 } })
     if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
       cond.push({ $skip: ((page * limit) - limit) })
       cond.push({ $limit: parseInt(limit) })
     }
-
     let result = await aggregateData({
       collection: postModel,
       aggregateCnd: cond
@@ -66,7 +70,7 @@ scheduleController.getCalenderPost = async (req, res) => {
     // })
     let count = await countData({
       collection: postModel,
-      where,
+      where
     })
     let data = {
       data: result,
@@ -78,6 +82,22 @@ scheduleController.getCalenderPost = async (req, res) => {
     sendResponse(res, 500, "Something went wrong.");
   }
 
+}
+
+function getStatusCondition(keys) {
+  let regexPattern;
+
+  if (keys == 2) {
+    regexPattern = 'completed';
+  } else if (keys == 4) {
+    regexPattern = 'initialize';
+  } else if (keys == 5) {
+    regexPattern = 'Failed';
+  } else {
+    regexPattern = null;
+  }
+
+  return regexPattern
 }
 scheduleController.getPost = async (req, res) => {
   try {
@@ -92,14 +112,18 @@ scheduleController.getPost = async (req, res) => {
       },
     })
 
+    console.log('keys', keys);
+
     if (Object.keys(valid).length != 0) {
       sendResponse(res, 400, valid)
       return
     }
     let where = { userId: user._id }
-    if (keys) {
-      where.name = { $regex: keys, $options: "i" }
-    }
+    // if (keys && keys != 1) {
+    //   if (keys == 2) where.status = { $regex: "completed", $options: "i" }
+    //   if (keys == 4) where.status = { $regex: "initialize", $options: "i" }
+    //   if (keys == 5) where.status = { $regex: "Failed", $options: "i" }
+    // }
 
     if (startDate && endDate && startDate.trim() != '' && endDate.trim() != '') {
       where.postDate = {
@@ -107,6 +131,26 @@ scheduleController.getPost = async (req, res) => {
         $lt: new Date(endDate)
       };
     }
+
+
+    let matchCondition;
+    let regextcontent = "";
+
+    if (keys && keys != 1) {
+      regextcontent = getStatusCondition(keys);
+      matchCondition = {
+        $match: {
+          "filteredPostData.0": { $exists: true }
+        }
+      };
+    } else {
+      matchCondition = {
+        $match: {
+          $expr: { $gt: [{ $size: "$postdata" }, 0] }
+        }
+      };
+    }
+
     let cond = [
       {
         $match: where
@@ -129,7 +173,7 @@ scheduleController.getPost = async (req, res) => {
       },
       {
         $match: {
-          "postdata.0": { $exists: true }
+          $expr: { $gt: [{ $size: "$postdata" }, 0] }
         }
       },
       {
@@ -138,6 +182,7 @@ scheduleController.getPost = async (req, res) => {
           caption: -1,
           mediaUrl: -1,
           data: -1,
+          postdata: 1,
           _id: 1,
           status: {
             $cond: {
@@ -203,10 +248,26 @@ scheduleController.getPost = async (req, res) => {
               then: "$postdata",
               else: []
             }
+          },
+          filteredPostData: {
+            $cond: {
+              if: { $and: [{ $ne: [keys, undefined] }, { $ne: [keys, 1] }] },
+              then: {
+                $filter: {
+                  input: "$postdata",
+                  as: "item",
+                  cond: { $eq: ["$$item.status", regextcontent] }
+                }
+              },
+              else: "$postdata"
+            }
           }
         }
-      }
-    ]
+      },
+      matchCondition
+
+    ];
+
 
     cond.push({ $sort: { _id: -1 } })
     if (!(startDate && endDate && startDate.trim() != '' && endDate.trim() != '')) {
@@ -474,115 +535,115 @@ scheduleController.createPost = async (req, res) => {
 
 }
 
-scheduleController.multiCreatePost = async (req, res) => {
-  try {
-    let { caption, mediaUrl = [], scheduleDate, accounts, timeZone, type, postDate, offset } = req.body;
+// scheduleController.multiCreatePostefe = async (req, res) => {
+//   try {
+//     let { caption, mediaUrl = [], scheduleDate, accounts, timeZone, type, postDate, offset } = req.body;
 
-    let valid = validateData(req?.body ?? {}, {
-      caption: {
-        type: "string"
-      },
-      mediaUrl: {
-        type: "array"
-      },
-      scheduleDate: {
-        type: "string"
-      },
-      accounts: {
-        type: "array"
-      },
-      offset: {
-        type: "number"
-      },
-      type: {
-        type: "string"
-      },
-    })
-    let userTimer = {}
-    if (Object.keys(valid).length != 0) {
-      sendResponse(res, 400, valid)
-      return
-    }
-    let userId = req.user._id
-
-
-    let userlist = await selectData({
-      collection: socialAccountModel,
-      where: {
-        _id: { $in: accounts }
-      }
-    })
-    let sd = new Date(scheduleDate)
-    let cd = new Date()
-    if (type != "postnow") {
-      for (let user of userlist) {
-
-        let timezoneOffset = (new Date().getTimezoneOffset() / 60) * -1
-        let dif = TimeDiffrence(timezoneOffset, user.TimeZone.offset)
-        let date = new Date(scheduleDate)
-        if (user.TimeZone.offset > timezoneOffset) {
-          date.setMinutes(date.getMinutes() + dif)
-        } else {
-          date.setMinutes(date.getMinutes() - dif)
-        }
-
-        if (cd.getTime() > date.getTime()) {
-          sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
-          return
-        } else {
-          userTimer[user._id] = date
-        }
-      }
-    }
+//     let valid = validateData(req?.body ?? {}, {
+//       caption: {
+//         type: "string"
+//       },
+//       mediaUrl: {
+//         type: "array"
+//       },
+//       scheduleDate: {
+//         type: "string"
+//       },
+//       accounts: {
+//         type: "array"
+//       },
+//       offset: {
+//         type: "number"
+//       },
+//       type: {
+//         type: "string"
+//       },
+//     })
+//     let userTimer = {}
+//     // if (Object.keys(valid).length != 0) {
+//     //   sendResponse(res, 400, valid)
+//     //   return
+//     // }
+//     let userId = req.user._id
 
 
-    const dat = new Date();
-    accounts = accounts.map((ele) => new mongoose.Types.ObjectId(ele))
-    let d1 = await insertData({
-      req, res,
-      collection: schedulePostModel,
-      data: {
-        type,
-        userId,
-        caption,
-        mediaUrl,
-        scheduleDate: sd,
-        accounts,
-        timeZone,
-        postDate: sd,
-      }
-    })
-    let arr = []
+//     let userlist = await selectData({
+//       collection: socialAccountModel,
+//       where: {
+//         _id: { $in: accounts }
+//       }
+//     })
+//     let sd = new Date(scheduleDate)
+//     let cd = new Date()
+//     if (type != "postnow") {
+//       for (let user of userlist) {
 
-    accounts.map((ele) => {
-      console.log({ type }, userTimer, userTimer[ele], (type != "postnow" ? new Date(userTimer[ele]) : sd))
-      let obj = {
-        userId,
-        scheduleId: d1._id,
-        accountId: new mongoose.Types.ObjectId(ele),
-        caption,
-        mediaUrl,
-        type,
-        scheduleDate: sd,
-        postDate: (type != "postnow" ? new Date(userTimer[ele]) : sd),
-      }
+//         let timezoneOffset = (new Date().getTimezoneOffset() / 60) * -1
+//         let dif = TimeDiffrence(timezoneOffset, user.TimeZone.offset)
+//         let date = new Date(scheduleDate)
+//         if (user.TimeZone.offset > timezoneOffset) {
+//           date.setMinutes(date.getMinutes() + dif)
+//         } else {
+//           date.setMinutes(date.getMinutes() - dif)
+//         }
 
-      arr.push(obj)
-    })
-    let post = await insertData({
-      collection: postModel,
-      data: arr
-    })
-    if (post) {
-      sendResponse(res, 201, "Post Created Successfully.")
-    }
+//         if (cd.getTime() > date.getTime()) {
+//           sendResponse(res, 401, "Please choose future date and time as per selected timezone.");
+//           return
+//         } else {
+//           userTimer[user._id] = date
+//         }
+//       }
+//     }
 
-  } catch (error) {
-    console.log({ error })
-    sendResponse(res, 500, "Someting went wrong", error)
-  }
 
-}
+//     const dat = new Date();
+//     accounts = accounts.map((ele) => new mongoose.Types.ObjectId(ele))
+//     let d1 = await insertData({
+//       req, res,
+//       collection: schedulePostModel,
+//       data: {
+//         type,
+//         userId,
+//         caption,
+//         mediaUrl,
+//         scheduleDate: sd,
+//         accounts,
+//         timeZone,
+//         postDate: sd,
+//       }
+//     })
+//     let arr = []
+
+//     accounts.map((ele) => {
+//       console.log({ type }, userTimer, userTimer[ele], (type != "postnow" ? new Date(userTimer[ele]) : sd))
+//       let obj = {
+//         userId,
+//         scheduleId: d1._id,
+//         accountId: new mongoose.Types.ObjectId(ele),
+//         caption,
+//         mediaUrl,
+//         type,
+//         scheduleDate: sd,
+//         postDate: (type != "postnow" ? new Date(userTimer[ele]) : sd),
+//       }
+
+//       arr.push(obj)
+//     })
+//     let post = await insertData({
+//       collection: postModel,
+//       data: arr
+//     })
+//     if (post) {
+//       sendResponse(res, 201, "Post Created Successfully.")
+//     }
+
+//   } catch (error) {
+//     console.log({ error })
+//     sendResponse(res, 500, "Someting went wrong", error)
+//   }
+
+// }
 
 scheduleController.updatePost = async (req, res) => {
   try {
@@ -749,18 +810,6 @@ scheduleController.multiCreatePost = async (req, res) => {
 
     console.log('body data ', req.body);
 
-    let valid = validateData(req?.body ?? {}, {
-      postList: {
-        type: "array"
-      },
-      scheduleDate: {
-        type: "string"
-      },
-      timeZone: {
-        type: "object"
-      },
-
-    })
     let userId = req.user._id
     let userTimer = {}
     let postData = []
@@ -768,14 +817,18 @@ scheduleController.multiCreatePost = async (req, res) => {
 
     console.log('postList', postList);
 
+    let mainCaption = postList[0].text
+    let mainMedia = [{ mediaType: 'image', mediaUrl: postList[0].image }]
+
+
     for (let i = 0; i < postList.length; i++) {
       let { title, text, image = [], accId } = postList[i];
 
-      let caption, mediaUrl = [], accounts = []
+      let caption, mediaUrl = []
       caption = text
       mediaUrl = [{ mediaType: 'image', mediaUrl: image }]
+      let accounts = []
       accounts.push(accId)
-      console.log('accounts', accounts);
 
       let userlist = await selectData({
         collection: socialAccountModel,
@@ -783,7 +836,6 @@ scheduleController.multiCreatePost = async (req, res) => {
           _id: { $in: accounts }
         }
       })
-      console.log('userlist', userlist);
 
       let cd = new Date()
       if (type != "postnow") {
@@ -805,30 +857,8 @@ scheduleController.multiCreatePost = async (req, res) => {
         }
       }
 
-      let data = {
-        type,
-        userId,
-        caption,
-        mediaUrl,
-        scheduleDate: sd,
-        accounts,
-        timeZone,
-        postDate: sd,
-      }
-      postData.push(data)
-    }
-    for (let i = 0; i < postData.length; i++) {
-      let {
-        type,
-        userId,
-        caption,
-        mediaUrl,
-        scheduleDate,
-        accounts,
-        timeZone,
-        postDate: sd,
-      } = postData[i]
-
+      const dat = new Date();
+      accounts = accounts.map((ele) => new mongoose.Types.ObjectId(ele))
       let d1 = await insertData({
         req, res,
         collection: schedulePostModel,
@@ -837,14 +867,16 @@ scheduleController.multiCreatePost = async (req, res) => {
           userId,
           caption,
           mediaUrl,
-          scheduleDate,
+          scheduleDate: sd,
           accounts,
           timeZone,
           postDate: sd,
         }
       })
       let arr = []
+
       accounts.map((ele) => {
+        console.log({ type }, userTimer, userTimer[ele], (type != "postnow" ? new Date(userTimer[ele]) : sd))
         let obj = {
           userId,
           scheduleId: d1._id,
@@ -855,15 +887,16 @@ scheduleController.multiCreatePost = async (req, res) => {
           scheduleDate: sd,
           postDate: (type != "postnow" ? new Date(userTimer[ele]) : sd),
         }
+
         arr.push(obj)
       })
       let post = await insertData({
-        req, res,
         collection: postModel,
         data: arr
       })
 
     }
+
     sendResponse(res, 201, "Posts Created Successfully.")
 
   } catch (error) {
@@ -875,8 +908,9 @@ scheduleController.multiCreatePost = async (req, res) => {
 
 scheduleController.deletePost = async (req, res) => {
   try {
-    let { target, scheduleId } = req?.body || {};
+    let { target, scheduleId, type } = req?.body || {};
     let user = req.user
+
 
     console.log(target, scheduleId)
     let where = {}
@@ -894,39 +928,140 @@ scheduleController.deletePost = async (req, res) => {
           collection: schedulePostModel,
           where: { _id: selecteddata[0].scheduleId, userId: user._id }
         })
-        let dacc = sp[0].accounts.filter(item => !item.equals(selecteddata[0].accountId));
-        let update = await updateData({
-          collection: schedulePostModel,
-          where: { _id: sp[0]._id },
-          data: {
-            accounts: dacc,
-          }
+        if (sp.length) {
+          let dacc = sp[0].accounts.filter(item => !item.equals(selecteddata[0].accountId));
+          let update = await updateData({
+            collection: schedulePostModel,
+            where: { _id: sp[0]._id },
+            data: {
+              accounts: dacc,
+            }
+          })
+        }
+        result = await deleteData({
+          collection: postModel,
+          limit: 1,
+          where: where
         })
       }
+    }
 
+    if (scheduleId) {
+      result = await deleteData({
+        collection: schedulePostModel,
+        where: { _id: scheduleId, userId: user._id },
+      })
       result = await deleteData({
         collection: postModel,
         limit: 1,
-        where: where
+        where: { scheduleId: scheduleId, userId: user._id }
       })
     }
-    if (scheduleId) {
-      where = { scheduleId: scheduleId, userId: user._id }
-      result = await deleteData({
-        collection: schedulePostModel,
-        where: { _id: scheduleId, userId: user._id }
-      })
-    }
+
     if (result?.deletedCount == 0) {
       sendResponse(res, 400, "This post not exits.")
     } else {
       sendResponse(res, 200, "Post Deleted Succesfully.")
     }
+
   } catch (e) {
     console.log({ e })
     sendResponse(res, 500, "Something went wrong.");
   }
 }
+
+
+
+
+scheduleController.deleteSinglePost = async (req, res) => {
+  try {
+    let { target, scheduleId, type } = req?.body || {};
+    let user = req.user;
+    console.log("Request body:", req.body);
+
+    if (!target && type == "single") {
+      return sendResponse(res, 400, "Target ID is required for single deletion.");
+    }
+
+    let where = { userId: user._id, target };
+    console.log("User ID:", user._id);
+    console.log("Where condition:", where);
+
+    if (type === "single") {
+      where._id = target;
+      let sp = await selectData({
+        collection: postModel,
+        where
+      });
+      console.log("Selected Posts:", sp);
+
+      if (sp.length) {
+        let result = await deleteData({
+          collection: postModel,
+          limit: 1,
+          where
+        });
+
+        if (result.deletedCount > 0) {
+          await handleScheduleUpdate(target, user._id);
+          return sendResponse(res, 200, "Single post deleted successfully.");
+        }
+      }
+    } else if (type === "schedule") {
+      where.scheduleId = scheduleId;
+      let sp = await selectData({
+        collection: postModel,
+        where,
+        findOne: true
+      });
+
+      if (sp) {
+        await deleteData({ collection: postModel, where });
+
+
+        await deleteData({ collection: postModel, where: { scheduleId: sp._id } });
+        await handleScheduleUpdate(scheduleId, user._id, true);
+        return sendResponse(res, 200, "Scheduled posts deleted successfully.");
+      }
+    }
+
+
+    sendResponse(res, 400, "Failed to delete post.");
+  } catch (e) {
+    console.error("Error deleting post:", e);
+    sendResponse(res, 500, "Something went wrong.");
+  }
+};
+
+
+
+
+
+
+
+const handleScheduleUpdate = async (id, userId, isSchedule = false) => {
+  let sp = await selectData({
+    collection: schedulePostModel,
+    where: { _id: id, userId }
+  });
+
+  if (sp && sp.length > 0) {
+    let updatedAccounts = sp[0].accounts.filter(item => item !== id);
+
+    if (updatedAccounts.length === 0) {
+      await deleteData({
+        collection: schedulePostModel,
+        where: { _id: sp[0]._id, userId }
+      });
+    } else {
+      await updateData({
+        collection: schedulePostModel,
+        where: { _id: sp[0]._id },
+        data: { accounts: updatedAccounts }
+      });
+    }
+  }
+};
 
 scheduleController.textVariation = async (req, res) => {
   try {
@@ -967,6 +1102,10 @@ async function postDescriptions(acc) {
 
   return newarr;
 }
+
+
+
+
 
 
 

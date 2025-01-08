@@ -15,4 +15,5 @@ module.exports = mongoose.model('post', new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     scheduleDate: { type: Date, default: Date.now },
     postDate: { type: Date, default: Date.now },
+    isDeleted: { type: Boolean, default: false }
 }));
