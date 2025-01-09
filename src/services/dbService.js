@@ -71,7 +71,7 @@ let dbService = {
                 }
 
             }
-            if (limit = 10) {
+            if (limit) {
                 if (limit) {
                     createObj.limit(limit);
                 }
