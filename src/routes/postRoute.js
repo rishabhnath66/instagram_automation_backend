@@ -21,6 +21,8 @@ let requests = {
   },
   delete: {
     '/deletePost': postController.deletePost,
+    '/deleteSinglePost': postController.deleteSinglePost
+
   },
 
 }
