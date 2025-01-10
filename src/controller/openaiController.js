@@ -87,7 +87,7 @@ openaiController.generateVariation = async (req, res) => {
                             // console.log('f1', f1);
                             fs.unlinkSync(newpath)
 
-                            result.image = process.env.CDN_URl + f1.Key ? f1.Key : f1.key
+                            result.image = process.env.CDN_URl + (f1.Key ? f1.Key : f1.key)
                         }
                         newarr.push(result);
                     }).catch(err => {
