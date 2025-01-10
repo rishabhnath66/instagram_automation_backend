@@ -75,7 +75,6 @@ openaiController.generateVariation = async (req, res) => {
 
                 for (let i = 0; i < acc.length; i++) {
                     await OpenAI.generatePostVariation(data).then(async result => {
-
                         if (result?.image) {
                             let newpath = `public/images/${Date.now()}.png`
                             try {
@@ -88,7 +87,7 @@ openaiController.generateVariation = async (req, res) => {
                             // console.log('f1', f1);
                             fs.unlinkSync(newpath)
 
-                            result.image = f1.Key ? f1.Key : f1.key
+                            result.image = process.env.CDN_URl + f1.Key ? f1.Key : f1.key
                         }
                         newarr.push(result);
                     }).catch(err => {
@@ -97,6 +96,9 @@ openaiController.generateVariation = async (req, res) => {
                         error = true
                         msg = err
                     })
+                }
+                if (data?.image) {
+                    fs.unlinkSync(output);
                 }
                 if (error) {
                     sendResponse(res, 500, "Someting went wrong", msg)
@@ -216,9 +218,8 @@ async function downloadImage(imageUrl, outputPath) {
 
                 const imageBuffer = Buffer.from(response.data);
                 const resizedImageBuffer = await sharp(imageBuffer)
-                    .resize({ width: 1024, height: 1024 })
+                    .resize(305, 305)
                     .toFormat('png')
-                    .ensureAlpha()
                     .toBuffer();
                 if (resizedImageBuffer) {
                     fs.writeFile(outputPath, resizedImageBuffer, (err) => {
