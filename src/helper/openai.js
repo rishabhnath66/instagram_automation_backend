@@ -62,7 +62,6 @@ OPEN_AI.generatePostVariation = async (data) => {
                 // });
                 console.log('img', img);
 
-                fs.unlinkSync(data.image);
                 if (img.data[0].url) {
 
                     response.image = img.data[0].url
