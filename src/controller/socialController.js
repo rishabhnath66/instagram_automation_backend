@@ -279,7 +279,7 @@ const instragramAccAdd = async (code, redirect_uri) => {
         grant_type: 'authorization_code',
         client_secret: "63bd7ccb9064cb48221acd67664983dc",
         code: code,
-        redirect_uri: "https://localhost:3001/auth/addSocialAccount"
+        redirect_uri: "https://instaapi.pixelnx.in/auth/addSocialAccount"
       };
 
       let config = {
